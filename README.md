@@ -16,4 +16,4 @@ Primer proyecto de Estructuras de Datos.
 - ****
 
 ## Fecha de Entrega
-Septiembre 2025
+28 Septiembre 2025
