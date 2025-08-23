@@ -1,5 +1,5 @@
 # Proyecto de Estructuras de Datos
-[PDF con las instrucciones del proyecto](./proyecto%201%20(Hospital%20Veterinario)%20(15-08-24)%20.pdf)
+[PDF con las instrucciones del proyecto](./Primer%20proyecto%20-%20Courier%20Quest.pdf)
 ## Integrantes del Equipo
 - Bryan Aguero Mata    
 - Maria Blanco Sanchez   
