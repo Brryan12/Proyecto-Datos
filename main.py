@@ -5,6 +5,40 @@ from src.models.CityMap import CityMap
 from src.game.map_rend import MapRenderer
 
 from src.game.statistics import Stats
+import time
+
+def test_stats():
+    print("=== PRUEBA DEL SISTEMA DE RESISTENCIA ===")
+    stats = Stats()
+
+    print("\nInicial:")
+    print(f"Resistencia={stats.resistencia}, Estado={stats.estado_actual()}, Factor={stats.factor_velocidad()}, Puede mover={stats.puede_moverse()}")
+
+    # Movimiento con poco peso y clima normal
+    consumo = stats.consume_por_mover(celdas=5, peso_total=2, condicion_clima="clear")
+    print(f"\nTras mover 5 celdas (peso 2, clear): consumió {consumo}, resistencia={stats.resistencia}, estado={stats.estado_actual()}, factor={stats.factor_velocidad()}, puede mover={stats.puede_moverse()}")
+
+    # Movimiento con sobrepeso y lluvia
+    consumo = stats.consume_por_mover(celdas=3, peso_total=6, condicion_clima="rain")
+    print(f"\nTras mover 3 celdas (peso 6, rain): consumió {consumo}, resistencia={stats.resistencia}, estado={stats.estado_actual()}, factor={stats.factor_velocidad()}, puede mover={stats.puede_moverse()}")
+
+    # Agotarlo con tormenta
+    consumo = stats.consume_por_mover(celdas=50, peso_total=1, condicion_clima="storm")
+    print(f"\nTras mover 50 celdas (storm): consumió {consumo}, resistencia={stats.resistencia}, estado={stats.estado_actual()}, factor={stats.factor_velocidad()}, puede mover={stats.puede_moverse()}")
+
+    # Recuperación estando quieto
+    print("\nEsperando 3 segundos para recuperación (quieto)...")
+    time.sleep(3)
+    stats.recupera(segundos=3, rest_point=False)
+    print(f"Resistencia={stats.resistencia}, Estado={stats.estado_actual()}, Factor={stats.factor_velocidad()}, Puede mover={stats.puede_moverse()}")
+
+    # Recuperación en punto de descanso
+    print("\nEsperando 3 segundos en punto de descanso...")
+    time.sleep(3)
+    stats.recupera(segundos=3, rest_point=True)
+    print(f"Resistencia={stats.resistencia}, Estado={stats.estado_actual()}, Factor={stats.factor_velocidad()}, Puede mover={stats.puede_moverse()}")
+    print("=== FIN DE PRUEBA ===")
+
 
 
 def main():
@@ -31,18 +65,6 @@ def main():
 
     renderer = MapRenderer(city_map, SPRITES_DIR, TILE_WIDTH, TILE_HEIGHT)
 
-    s = Stats()
-    print("Inicial:", s.resistencia, s.estado_actual(), s.factor_velocidad())
-
-    s.consume_resistencia(75)
-    print("Consume 75: ", s.resistencia, s.estado_actual(), s.factor_velocidad())
-
-    s.consume_resistencia(30)
-    print("Consume 30: ", s.resistencia, s.estado_actual(), s.factor_velocidad())
-
-    s.recupera_resistencia(50)
-    print("Tras recuperar 50: ", s.resistencia, s.estado_actual(), s.factor_velocidad())
-
     running = True
     print("Entrando al loop principal...")
     while running:
@@ -60,5 +82,6 @@ def main():
 
 
 if __name__ == "__main__":
+    test_stats()
     main()
 
