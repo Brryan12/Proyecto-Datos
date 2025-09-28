@@ -1,0 +1,48 @@
+# Entornos virtuales
+venv/
+env/
+ENV/
+.env
+.venv
+
+# Archivos compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Directorios de distribución
+dist/
+build/
+*.egg-info/
+
+# Archivos de caché de Python
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Archivos de IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de logs
+*.log
+
+# Archivos de bases de datos locales
+*.sqlite3
+*.db
+
+# Archivos específicos de Jupyter Notebook
+.ipynb_checkpoints
+
+# Archivos específicos de Pygame
+*.pgm
