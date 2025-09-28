@@ -4,6 +4,8 @@ from pathlib import Path
 from src.models.CityMap import CityMap
 from src.game.map_rend import MapRenderer
 
+from src.game.statistics import Stats
+
 
 def main():
     print("Iniciando Courier Quest...")
@@ -28,6 +30,18 @@ def main():
     clock = pygame.time.Clock()
 
     renderer = MapRenderer(city_map, SPRITES_DIR, TILE_WIDTH, TILE_HEIGHT)
+
+    s = Stats()
+    print("Inicial:", s.resistencia, s.estado_actual(), s.factor_velocidad())
+
+    s.consume_resistencia(75)
+    print("Consume 75: ", s.resistencia, s.estado_actual(), s.factor_velocidad())
+
+    s.consume_resistencia(30)
+    print("Consume 30: ", s.resistencia, s.estado_actual(), s.factor_velocidad())
+
+    s.recupera_resistencia(50)
+    print("Tras recuperar 50: ", s.resistencia, s.estado_actual(), s.factor_velocidad())
 
     running = True
     print("Entrando al loop principal...")
