@@ -2,22 +2,14 @@ from typing import Dict, Literal
 
 
 class Stats:
-    def __init__(self,
-                 resistencia_max: float = 100.0,
-                 recuperacion_threshold: float = 30.0,
-                 consumo_por_celda: float = 0.5,
-                 peso_extra_por_unidad: float = 0.2,
-                 recuperacion_rate_idle: float = 5.0,
-                 recuperacion_rate_rest_point: float = 10.0):
-        # atributos base
+    def __init__(self, resistencia_max: float = 100.0, recuperacion_threshold: float = 30.0, consumo_por_celda: float = 0.5, peso_extra_por_unidad: float = 0.2, recuperacion_rate_idle: float = 5.0, recuperacion_rate_rest_point: float = 10.0):
+
         self.resistencia_max: float = resistencia_max
         self.resistencia: float = resistencia_max
-
         self.recuperacion_threshold: float = recuperacion_threshold
         self.consumo_por_celda: float = consumo_por_celda
         self.peso_extra_por_unidad: float = peso_extra_por_unidad
 
-        # ✅ inicialización explícita, sin depender de dataclass
         self.extras_clima: Dict[str, float] = {
             "rain": 0.1,
             "wind": 0.1,
@@ -34,8 +26,6 @@ class Stats:
         self.recuperacion_rate_rest_point: float = recuperacion_rate_rest_point
 
         self._exhaust_lock: bool = False
-
-    # === Métodos ===
 
     def consumo_por_celda_total(self, peso_total: float, condicion_clima: str) -> float:
         base = self.consumo_por_celda

@@ -8,6 +8,33 @@ import time
 
 from src.game.stats_module import Stats
 
+from src.game.reputation import Reputation
+
+def test_reputation():
+    rep = Reputation()
+
+    print("Inicial:", rep.valor, rep.obtener_multiplicador_pago())
+
+    # entregar a tiempo
+    rep.registrar_entrega("a_tiempo")
+    print("Tras entrega a tiempo:", rep.valor)
+
+    # subir a >=85 y ver bono
+    rep.valor = 85
+    print("Bono aplicado?:", rep.obtener_multiplicador_pago())
+
+    # entrega tardía con mitigación
+    rep.registrar_entrega("tarde")
+    print("Tras tardanza mitigada:", rep.valor)
+
+    # entrega tardía sin mitigación
+    rep.registrar_entrega("tarde")
+    print("Tras tardanza normal:", rep.valor)
+
+    # bajar a derrota
+    rep.valor = 15
+    print("Derrota?:", rep.derrotado())
+
 
 def test_stats():
     s = Stats()
@@ -80,6 +107,6 @@ def main():
 
 
 if __name__ == "__main__":
-    test_stats()
+    test_reputation()
     main()
 
