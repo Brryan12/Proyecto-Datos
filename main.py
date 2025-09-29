@@ -4,40 +4,38 @@ from pathlib import Path
 from src.models.CityMap import CityMap
 from src.game.map_rend import MapRenderer
 
-from src.game.statistics import Stats
 import time
 
+from src.game.stats_module import Stats
+
+
 def test_stats():
-    print("=== PRUEBA DEL SISTEMA DE RESISTENCIA ===")
-    stats = Stats()
+    s = Stats()
 
-    print("\nInicial:")
-    print(f"Resistencia={stats.resistencia}, Estado={stats.estado_actual()}, Factor={stats.factor_velocidad()}, Puede mover={stats.puede_moverse()}")
+    print("=== PRUEBAS DE STATS ===")
 
-    # Movimiento con poco peso y clima normal
-    consumo = stats.consume_por_mover(celdas=5, peso_total=2, condicion_clima="clear")
-    print(f"\nTras mover 5 celdas (peso 2, clear): consumió {consumo}, resistencia={stats.resistencia}, estado={stats.estado_actual()}, factor={stats.factor_velocidad()}, puede mover={stats.puede_moverse()}")
+    # Estado inicial
+    print("Inicial:", s.resistencia, s.estado_actual(), s.puede_moverse())
 
-    # Movimiento con sobrepeso y lluvia
-    consumo = stats.consume_por_mover(celdas=3, peso_total=6, condicion_clima="rain")
-    print(f"\nTras mover 3 celdas (peso 6, rain): consumió {consumo}, resistencia={stats.resistencia}, estado={stats.estado_actual()}, factor={stats.factor_velocidad()}, puede mover={stats.puede_moverse()}")
+    # 1) Moverse 1 celda con peso 2 (clear)
+    consumo = s.consume_por_mover(celdas=1, peso_total=2, condicion_clima="clear")
+    print("Mover 1 celda clear, peso 2 -> consumo", consumo, "Resistencia:", s.resistencia)
 
-    # Agotarlo con tormenta
-    consumo = stats.consume_por_mover(celdas=50, peso_total=1, condicion_clima="storm")
-    print(f"\nTras mover 50 celdas (storm): consumió {consumo}, resistencia={stats.resistencia}, estado={stats.estado_actual()}, factor={stats.factor_velocidad()}, puede mover={stats.puede_moverse()}")
+    # 2) Moverse 1 celda con peso 6 (rain)
+    consumo = s.consume_por_mover(celdas=1, peso_total=6, condicion_clima="rain")
+    print("Mover 1 celda lluvia, peso 6 -> consumo", consumo, "Resistencia:", s.resistencia)
 
-    # Recuperación estando quieto
-    print("\nEsperando 3 segundos para recuperación (quieto)...")
-    time.sleep(3)
-    stats.recupera(segundos=3, rest_point=False)
-    print(f"Resistencia={stats.resistencia}, Estado={stats.estado_actual()}, Factor={stats.factor_velocidad()}, Puede mover={stats.puede_moverse()}")
+    # 3) Agotarlo con tormenta
+    s.consume_por_mover(celdas=200, peso_total=1, condicion_clima="storm")
+    print("Tras tormenta:", s.resistencia, s.estado_actual(), s.puede_moverse())
 
-    # Recuperación en punto de descanso
-    print("\nEsperando 3 segundos en punto de descanso...")
-    time.sleep(3)
-    stats.recupera(segundos=3, rest_point=True)
-    print(f"Resistencia={stats.resistencia}, Estado={stats.estado_actual()}, Factor={stats.factor_velocidad()}, Puede mover={stats.puede_moverse()}")
-    print("=== FIN DE PRUEBA ===")
+    # 4) Recuperar 3 segundos sin descanso
+    s.recupera(segundos=3, rest_point=False)
+    print("Tras 3s idle:", s.resistencia, s.estado_actual(), s.puede_moverse())
+
+    # 5) Recuperar 2 segundos en descanso
+    s.recupera(segundos=2, rest_point=True)
+    print("Tras 2s rest:", s.resistencia, s.estado_actual(), s.puede_moverse())
 
 
 
