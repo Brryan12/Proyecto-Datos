@@ -1,33 +1,41 @@
-from dataclasses import dataclass
-from typing import Literal
+from typing import Dict, Literal
 
-@dataclass
+
 class Stats:
-    resistencia_max: float = 100.0
-    resistencia: float = 100.0
+    def __init__(self,
+                 resistencia_max: float = 100.0,
+                 recuperacion_threshold: float = 30.0,
+                 consumo_por_celda: float = 0.5,
+                 peso_extra_por_unidad: float = 0.2,
+                 recuperacion_rate_idle: float = 5.0,
+                 recuperacion_rate_rest_point: float = 10.0):
+        # atributos base
+        self.resistencia_max: float = resistencia_max
+        self.resistencia: float = resistencia_max
 
-    recuperacion_threshold: float = 30.0
-    consumo_por_celda: float = 0.5
-    peso_extra_por_unidad: float = 0.2
-    extras_clima: dict = None
-    recuperacion_rate_idle: float = 5.0
-    recuperacion_rate_rest_point: float = 10.0
+        self.recuperacion_threshold: float = recuperacion_threshold
+        self.consumo_por_celda: float = consumo_por_celda
+        self.peso_extra_por_unidad: float = peso_extra_por_unidad
 
-    _exhaust_lock: bool = False
+        # ✅ inicialización explícita, sin depender de dataclass
+        self.extras_clima: Dict[str, float] = {
+            "rain": 0.1,
+            "wind": 0.1,
+            "rain_light": 0.1,
+            "storm": 0.3,
+            "heat": 0.2,
+            "clear": 0.0,
+            "clouds": 0.0,
+            "fog": 0.0,
+            "cold": 0.0,
+        }
 
-    def __post_init__(self):
-        if self.extras_clima is None:
-            self.extras_clima = {
-                "rain": 0.1,
-                "wind": 0.1,
-                "rain_light": 0.1,
-                "storm": 0.3,
-                "heat": 0.2,
-                "clear": 0.0,
-                "clouds": 0.0,
-                "fog": 0.0,
-                "cold": 0.0,
-            }
+        self.recuperacion_rate_idle: float = recuperacion_rate_idle
+        self.recuperacion_rate_rest_point: float = recuperacion_rate_rest_point
+
+        self._exhaust_lock: bool = False
+
+    # === Métodos ===
 
     def consumo_por_celda_total(self, peso_total: float, condicion_clima: str) -> float:
         base = self.consumo_por_celda
@@ -62,19 +70,17 @@ class Stats:
     def estado_actual(self) -> Literal["normal", "cansado", "exhausto"]:
         if self.resistencia <= 0.0:
             return "exhausto"
-        elif self.resistencia <= self.recuperacion_threshold:
+        if self.resistencia <= self.recuperacion_threshold:
             return "cansado"
-        else:
-            return "normal"
+        return "normal"
 
     def factor_velocidad(self) -> float:
-        est = self.estado_actual()
-        if est == "normal":
+        estado = self.estado_actual()
+        if estado == "normal":
             return 1.0
-        elif est == "cansado":
+        if estado == "cansado":
             return 0.8
-        else:
-            return 0.0
+        return 0.0
 
     def puede_moverse(self) -> bool:
         if self._exhaust_lock:
@@ -94,4 +100,3 @@ class Stats:
         self.resistencia = float(d.get("resistencia", self.resistencia))
         self.recuperacion_threshold = float(d.get("recuperacion_threshold", self.recuperacion_threshold))
         self._exhaust_lock = bool(d.get("exhaust_lock", self._exhaust_lock))
-    
