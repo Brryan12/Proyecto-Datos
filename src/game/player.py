@@ -37,6 +37,7 @@ class Player(pygame.sprite.Sprite):
     def mover(self, direccion: str, peso_total: float = 0.0, clima: str = "clear"):
 
         if not self.stats.puede_moverse():
+            print("Jugador exhausto, no puede moverse.")
             return  # no puede moverse si está exhausto
 
         if direccion == "up":

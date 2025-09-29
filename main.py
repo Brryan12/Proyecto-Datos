@@ -56,9 +56,6 @@ def test_stats():
 
 
 
-# -------------------
-# LOOP PRINCIPAL
-# -------------------
 def main():
     print("Iniciando Courier Quest...")
     TILE_WIDTH = 40
@@ -75,6 +72,8 @@ def main():
     print("Mapa cargado:", city_map.city_name, city_map.width, city_map.height)
 
     pygame.init()
+
+    font = pygame.font.SysFont("Arial", 20)
 
     WINDOW_WIDTH = 800
     WINDOW_HEIGHT = 600
@@ -107,18 +106,30 @@ def main():
 
         # input simple para mover al jugador
         keys = pygame.key.get_pressed()
+        moved = False
         if keys[pygame.K_UP]:
             player.mover("up")
+            moved = True
         elif keys[pygame.K_DOWN]:
             player.mover("down")
+            moved = True
         elif keys[pygame.K_LEFT]:
             player.mover("izq")
+            moved = True
         elif keys[pygame.K_RIGHT]:
             player.mover("der")
+            moved = True
+
+        if not moved:
+            player.stats.recupera(segundos = 0.60, rest_point = False)
 
         screen.fill((0, 0, 0))
         renderer.draw(screen)
         screen.blit(player.image, player.rect)
+        hud_text = f"Resistencia: {player.stats.resistencia: .1f} | Estado: {player.stats.estado_actual()} | Reputacion: {player.reputation.valor}"
+        hud_surface = font.render(hud_text, True, (255, 255, 255))
+        screen.blit(hud_surface, (10,10))
+
         pygame.display.flip()
         clock.tick(60)
 
