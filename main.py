@@ -107,16 +107,16 @@ def main():
         # input simple para mover al jugador
         keys = pygame.key.get_pressed()
         moved = False
-        if keys[pygame.K_UP]:
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
             player.mover("up")
             moved = True
-        elif keys[pygame.K_DOWN]:
+        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
             player.mover("down")
             moved = True
-        elif keys[pygame.K_LEFT]:
+        elif keys[pygame.K_LEFT] or keys[pygame.K_a]:
             player.mover("izq")
             moved = True
-        elif keys[pygame.K_RIGHT]:
+        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             player.mover("der")
             moved = True
 
