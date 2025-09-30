@@ -58,8 +58,8 @@ def test_stats():
 
 def main():
     print("Iniciando Courier Quest...")
-    TILE_WIDTH = 40
-    TILE_HEIGHT = 44
+    TILE_WIDTH = 20
+    TILE_HEIGHT = 20
 
     BASE_DIR = Path(__file__).resolve().parent
     CACHE_DIR = BASE_DIR / "cache"
@@ -75,8 +75,8 @@ def main():
 
     font = pygame.font.SysFont("Arial", 20)
 
-    WINDOW_WIDTH = 800
-    WINDOW_HEIGHT = 600
+    WINDOW_WIDTH = 605
+    WINDOW_HEIGHT = 605
     screen = pygame.display.set_mode(
         ((WINDOW_WIDTH, WINDOW_HEIGHT))
     )
