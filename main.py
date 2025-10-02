@@ -58,8 +58,8 @@ def test_stats():
 
 def main():
     print("Iniciando Courier Quest...")
-    TILE_WIDTH = 40
-    TILE_HEIGHT = 44
+    TILE_WIDTH = 20
+    TILE_HEIGHT = 20
 
     BASE_DIR = Path(__file__).resolve().parent
     CACHE_DIR = BASE_DIR / "cache"
@@ -75,8 +75,8 @@ def main():
 
     font = pygame.font.SysFont("Arial", 20)
 
-    WINDOW_WIDTH = 800
-    WINDOW_HEIGHT = 600
+    WINDOW_WIDTH = 605
+    WINDOW_HEIGHT = 605
     screen = pygame.display.set_mode(
         ((WINDOW_WIDTH, WINDOW_HEIGHT))
     )
@@ -107,16 +107,16 @@ def main():
         # input simple para mover al jugador
         keys = pygame.key.get_pressed()
         moved = False
-        if keys[pygame.K_UP]:
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
             player.mover("up")
             moved = True
-        elif keys[pygame.K_DOWN]:
+        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
             player.mover("down")
             moved = True
-        elif keys[pygame.K_LEFT]:
+        elif keys[pygame.K_LEFT] or keys[pygame.K_a]:
             player.mover("izq")
             moved = True
-        elif keys[pygame.K_RIGHT]:
+        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             player.mover("der")
             moved = True
 
