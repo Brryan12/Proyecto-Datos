@@ -1,45 +1,106 @@
+# map_rend.py
 import pygame
 from pathlib import Path
+from typing import Optional, Tuple
+
 from src.models.CityMap import CityMap
 
+
 class MapRenderer:
-    def __init__(self, city_map: CityMap, sprites_dir: Path, tile_width = 40, tile_height = 44):
+    TILE_COLORS = {
+        "B": (120, 120, 120),  # edificio (fallback)
+        "C": (200, 200, 200),  # calle (fallback)
+        "P": (130, 200, 130),  # parque (fallback)
+        "default": (150, 150, 150),
+    }
+
+    def __init__(
+        self,
+        city_map: CityMap,
+        sprites_dir: Path,
+        tile_width: int = 40,
+        tile_height: int = 44,
+        viewport_size: Optional[Tuple[int, int]] = None,
+    ):
         self.city_map = city_map
-        self.sprites_dir = sprites_dir
-        self.tile_width = tile_width
-        self.tile_height = tile_height
+        self.sprites_dir = Path(sprites_dir)
+        self.tile_width = int(tile_width)
+        self.tile_height = int(tile_height)
+        self.camera_x = 0
+        self.camera_y = 0
 
-        self.TILE_COLORS = {
-            "default": (150, 150, 150)
-        }
+        self.viewport_size = viewport_size
 
-        self.sprites = {}
+        self.sprites: dict[str, Optional[pygame.Surface]] = {}
         self._cargar_sprites()
-    
-    def _cargar_sprite(self, filename: str) -> pygame.Surface   :
+
+    def _cargar_sprite(self, filename: str) -> Optional[pygame.Surface]:
         ruta = self.sprites_dir / filename
-        imagen = pygame.image.load(ruta).convert_alpha()
-        return pygame.transform.scale(imagen, (self.tile_width, self.tile_height))
-    
+        try:
+            surf = pygame.image.load(str(ruta)).convert_alpha()
+            return pygame.transform.scale(surf, (self.tile_width, self.tile_height))
+        except Exception as e:
+            print(f"[MapRenderer] Warning: no se pudo cargar sprite '{ruta}': {e}")
+            return None
+
     def _cargar_sprites(self):
         self.sprites["B"] = self._cargar_sprite("Spr_edificio1.png")
         self.sprites["C"] = self._cargar_sprite("Spr_acera.png")
         self.sprites["P"] = self._cargar_sprite("Spr_parque.png")
 
-    def draw(self, screen: pygame.Surface):
+    def set_camera_pos(self, px: int, py: int) -> None:
+        self.camera_x = int(px)
+        self.camera_y = int(py)
+        self._clamp_camera()
 
-        for y, fila in enumerate(self.city_map.tiles):
-            for x, code in enumerate(fila):
-                rect = pygame.Rect(
-                    x * self.tile_width,
-                    y * self.tile_height,
-                    self.tile_width,
-                    self.tile_height
-                )
+    def move_camera(self, dx: int, dy: int) -> None:
+        self.camera_x += int(dx)
+        self.camera_y += int(dy)
+        self._clamp_camera()
 
-                if code in self.sprites:
-                    screen.blit(self.sprites[code], rect.topleft)
+    def center_camera_on_tile(self, tx: int, ty: int, screen_size: Optional[Tuple[int,int]] = None) -> None:
+        sw, sh = screen_size if screen_size else self.viewport_size if self.viewport_size else (800, 600)
+        self.camera_x = tx * self.tile_width - sw // 2 + self.tile_width // 2
+        self.camera_y = ty * self.tile_height - sh // 2 + self.tile_height // 2
+        self._clamp_camera()
+
+    def _clamp_camera(self):
+        max_px = max(0, self.city_map.width * self.tile_width - 1)
+        max_py = max(0, self.city_map.height * self.tile_height - 1)
+        self.camera_x = max(0, min(self.camera_x, max_px))
+        self.camera_y = max(0, min(self.camera_y, max_py))
+
+    def tile_to_screen(self, x: int, y: int) -> Tuple[int, int]:
+        sx = x * self.tile_width - self.camera_x
+        sy = y * self.tile_height - self.camera_y
+        return int(sx), int(sy)
+
+    def screen_to_tile(self, sx: int, sy: int) -> Tuple[int, int]:
+        tx = (sx + self.camera_x) // self.tile_width
+        ty = (sy + self.camera_y) // self.tile_height
+        return int(tx), int(ty)
+
+    # ---------------- Dibujo ----------------
+    def draw(self, screen: pygame.Surface) -> None:
+        sw, sh = screen.get_size()
+        viewport_w, viewport_h = (self.viewport_size if self.viewport_size else (sw, sh))
+
+        # rango visible en tiles (clamped al mapa)
+        start_x = max(0, self.camera_x // self.tile_width)
+        start_y = max(0, self.camera_y // self.tile_height)
+        end_x = min(self.city_map.width, (self.camera_x + viewport_w) // self.tile_width + 1)
+        end_y = min(self.city_map.height, (self.camera_y + viewport_h) // self.tile_height + 1)
+
+        for y in range(start_y, end_y):
+            fila = self.city_map.tiles[y]
+            for x in range(start_x, end_x):
+                code = fila[x]
+                sx, sy = self.tile_to_screen(x, y)
+                rect = pygame.Rect(sx, sy, self.tile_width, self.tile_height)
+                sprite = self.sprites.get(code)
+                if sprite:
+                    screen.blit(sprite, rect.topleft)
                 else:
                     color = self.TILE_COLORS.get(code, self.TILE_COLORS["default"])
                     pygame.draw.rect(screen, color, rect)
-                    pygame.draw.rect(screen, (50,50,50), rect, 1)
+                    pygame.draw.rect(screen, (50, 50, 50), rect, 1)

@@ -1,50 +1,109 @@
-from typing import Literal
+# reputation.py
+from typing import Literal, Optional
+
 
 class Reputation:
-    def __init__(self, valor_inicial: int = 70, bono_reputacion: float = 0.05):
-        self.valor = valor_inicial
-        self.bono_reputacion = bono_reputacion
+
+    def __init__(
+        self,
+        valor_inicial: int = 70,
+        bono_reputacion_pct: float = 0.05,
+        bono_threshold: int = 90,
+        mitigacion_threshold: int = 85,
+    ):
+        self.valor: int = int(valor_inicial)
+        self.bono_reputacion_pct: float = float(bono_reputacion_pct)
+        self.bono_threshold: int = int(bono_threshold)
+        self.mitigacion_threshold: int = int(mitigacion_threshold)
+        self._mitigacion_usada: bool = False
+
+        self._streak_no_penalty: int = 0
+
+    def registrar_entrega(
+        self,
+        estado: Literal["temprano", "a_tiempo", "tarde", "cancelado", "perdido"],
+        delay_seconds: Optional[float] = None,
+    ) -> None:
+        estado_l = str(estado).strip().lower()
+
+        if estado_l in ("a tiempo", "a_tiempo", "on_time", "ontime"):
+            estado_l = "a_tiempo"
+        if estado_l in ("early",):
+            estado_l = "temprano"
+        if estado_l in ("lost", "expired", "fallo"):
+            estado_l = "perdido"
+        if estado_l in ("cancel", "canceled"):
+            estado_l = "cancelado"
+
+        delta = 0
+
+        if estado_l == "temprano":
+            delta = 5
+            self._streak_no_penalty += 1
+
+        elif estado_l == "a_tiempo":
+            delta = 3  
+            self._streak_no_penalty += 1
+
+        elif estado_l == "tarde":
+            if delay_seconds is None:
+                delta = -5 
+            else:
+                if delay_seconds <= 30:
+                    delta = -2
+                elif delay_seconds <= 120:
+                    delta = -5
+                else:
+                    delta = -10
+            if self.valor >= self.mitigacion_threshold and not self._mitigacion_usada:
+                delta = int(round(delta / 2.0))
+                self._mitigacion_usada = True
+            self._streak_no_penalty = 0
+
+        elif estado_l == "cancelado":
+            delta = -4
+            self._streak_no_penalty = 0
+
+        elif estado_l == "perdido":
+            delta = -6
+            self._streak_no_penalty = 0
+
+        else:
+            raise ValueError(f"Estado desconocido para registrar_entrega: {estado}")
+
+        self._ajustar(delta)
+        if self._streak_no_penalty >= 3:
+            self._ajustar(2)
+            self._streak_no_penalty = 0
+
+    def reset_diario(self) -> None:
         self._mitigacion_usada = False
 
-    def registrar_entrega(self, estado: Literal["temprano", "a_tiempo", "tarde", "fallo"]):
-        if estado == "temprano":
-            self._ajustar(3)
-        elif estado == "a_tiempo":
-            self._ajustar(2)
-        elif estado == "tarde":
-            if self.valor >= 85 and not self._mitigacion_usada: #en caso de entrega tardia
-                self._ajustar(-2)
-                self._mitigacion_usada = True
-            else:
-                self._ajustar(-5)
-        elif estado == "fallo":
-            self._ajustar(-10)
-    
-    def reset_diario(self):
-        self._mitigacion_usada = False
-    
     def obtener_multiplicador_pago(self) -> float:
-        if self.valor >= 85:
-            return 1.0 + self.bono_reputacion
+        if self.valor >= self.bono_threshold:
+            return 1.0 + float(self.bono_reputacion_pct)
         return 1.0
-    
-    def derrotado(self)->bool:
+
+    def derrotado(self) -> bool:
         return self.valor < 20
-    
+
     def _ajustar(self, delta: int) -> None:
-        self.valor += delta
-        if self.valor > 100:
-            self.valor = 100
-        if self.valor < 0:
-            self.valor
-    
+        self.valor = int(max(0, min(100, int(self.valor) + int(delta))))
+
     def to_dict(self) -> dict:
         return {
-            "valor": self.valor,
-            "bono_reputacion": self.bono_reputacion,
-            "mitigacion_usada": self._mitigacion_usada,
+            "valor": int(self.valor),
+            "bono_reputacion_pct": float(self.bono_reputacion_pct),
+            "bono_threshold": int(self.bono_threshold),
+            "mitigacion_threshold": int(self.mitigacion_threshold),
+            "mitigacion_usada": bool(self._mitigacion_usada),
+            "streak_no_penalty": int(self._streak_no_penalty),
         }
-    def load(self, d: dict):
+
+    def load(self, d: dict) -> None:
         self.valor = int(d.get("valor", self.valor))
-        self.bono_reputacion = float(d.get("bono_reputacion", self.bono_reputacion))
+        self.bono_reputacion_pct = float(d.get("bono_reputacion_pct", self.bono_reputacion_pct))
+        self.bono_threshold = int(d.get("bono_threshold", self.bono_threshold))
+        self.mitigacion_threshold = int(d.get("mitigacion_threshold", self.mitigacion_threshold))
         self._mitigacion_usada = bool(d.get("mitigacion_usada", self._mitigacion_usada))
+        self._streak_no_penalty = int(d.get("streak_no_penalty", self._streak_no_penalty))
