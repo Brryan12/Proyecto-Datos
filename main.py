@@ -8,9 +8,7 @@ from src.game.reputation import Reputation
 from src.game.player import Player
 
 
-# -------------------
-# TESTS UNITARIOS
-# -------------------
+
 def test_reputation():
     print("=== PRUEBAS DE REPUTATION ===")
     rep = Reputation()
@@ -122,14 +120,12 @@ def main():
 
         if not moved:
             player.stats.recupera(segundos = 0.60, rest_point = False)
-
         screen.fill((0, 0, 0))
         renderer.draw(screen)
         screen.blit(player.image, player.rect)
         hud_text = f"Resistencia: {player.stats.resistencia: .1f} | Estado: {player.stats.estado_actual()} | Reputacion: {player.reputation.valor}"
         hud_surface = font.render(hud_text, True, (255, 255, 255))
         screen.blit(hud_surface, (10,10))
-
         pygame.display.flip()
         clock.tick(60)
 
