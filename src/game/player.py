@@ -7,7 +7,7 @@ from src.game.reputation import Reputation
 class Player(pygame.sprite.Sprite):
 
 
-    def __init__(self, sprites_dir: Path, stats: Stats, reputation: Reputation, start_x: int = 0, start_y: int = 0):
+    def __init__(self, sprites_dir: Path, stats: Stats, reputation: Reputation, tile_width: int, tile_height: int, start_x: int = 0, start_y: int = 0):
         super().__init__()
 
         # --- Estado base ---
@@ -27,6 +27,9 @@ class Player(pygame.sprite.Sprite):
             "izq": pygame.image.load(sprites_dir / "Spr_delivery_izq.png").convert_alpha(),
             "der": pygame.image.load(sprites_dir / "Spr_delivery_der.png").convert_alpha(),
         }
+
+        # scale sprites to tile size
+        self.sprites = {k: pygame.transform.scale(v, (tile_width, tile_height)) for k, v in self.sprites.items()}
 
         self.image = self.sprites[self.direccion]
         self.rect = self.image.get_rect(topleft=(self.x, self.y))

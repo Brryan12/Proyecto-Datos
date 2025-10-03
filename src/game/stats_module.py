@@ -1,9 +1,19 @@
+# stats_module.py
 from typing import Dict, Literal
 
 
 class Stats:
-    def __init__(self, resistencia_max: float = 100.0, recuperacion_threshold: float = 30.0, consumo_por_celda: float = 0.5, peso_extra_por_unidad: float = 0.2, recuperacion_rate_idle: float = 5.0, recuperacion_rate_rest_point: float = 10.0):
 
+
+    def __init__(
+        self,
+        resistencia_max: float = 100.0,
+        recuperacion_threshold: float = 30.0,
+        consumo_por_celda: float = 0.5,
+        peso_extra_por_unidad: float = 0.2,
+        recuperacion_rate_idle: float = 5.0,
+        recuperacion_rate_rest_point: float = 10.0,
+    ):
         self.resistencia_max: float = resistencia_max
         self.resistencia: float = resistencia_max
         self.recuperacion_threshold: float = recuperacion_threshold
@@ -27,6 +37,7 @@ class Stats:
 
         self._exhaust_lock: bool = False
 
+    # ---------------- Consumo ----------------
     def consumo_por_celda_total(self, peso_total: float, condicion_clima: str) -> float:
         base = self.consumo_por_celda
         peso_extra = 0.0
@@ -35,13 +46,16 @@ class Stats:
         clima_extra = self.extras_clima.get(condicion_clima, 0.0)
         return base + peso_extra + clima_extra
 
-    def consume_por_mover(self, celdas: int = 1, peso_total: float = 0.0, condicion_clima: str = "clear") -> float:
+    def consume_por_mover(
+        self, celdas: float = 1.0, peso_total: float = 0.0, condicion_clima: str = "clear"
+    ) -> float:
+
         por_celda = self.consumo_por_celda_total(peso_total, condicion_clima)
-        cantidad = por_celda * max(0, int(celdas))
+        cantidad = por_celda * max(0.0, float(celdas))
         self._do_consume(cantidad)
         return cantidad
 
-    def _do_consume(self, cantidad: float):
+    def _do_consume(self, cantidad: float) -> None:
         self.resistencia -= cantidad
         if self.resistencia <= 0.0:
             self.resistencia = 0.0
@@ -85,7 +99,7 @@ class Stats:
             "exhaust_lock": self._exhaust_lock,
         }
 
-    def load(self, d: dict):
+    def load(self, d: dict) -> None:
         self.resistencia_max = float(d.get("resistencia_max", self.resistencia_max))
         self.resistencia = float(d.get("resistencia", self.resistencia))
         self.recuperacion_threshold = float(d.get("recuperacion_threshold", self.recuperacion_threshold))
