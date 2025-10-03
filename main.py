@@ -1,8 +1,24 @@
+# src/main.py
 import pygame
 import json
 from pathlib import Path
+from typing import List
 from src.models.CityMap import CityMap
 from src.models.ClimaData import ClimaData
+
+# Intento de import seguro de ServicioPedidos (soporta dos ubicaciones comunes)
+try:
+    from src.models.pedidos_service import ServicioPedidos
+except Exception:
+    try:
+        from src.models.pedidos_service import ServicioPedidos
+    except Exception as e:
+        raise ImportError(
+            "No se pudo importar ServicioPedidos. Asegúrate de que el módulo exista en "
+            "src/services/pedidos_service.py o src/models/pedidos_service.py"
+        ) from e
+
+from src.game.job_manager import GestorPedidos
 from src.game.map_rend import MapRenderer
 from src.game.stats_module import Stats
 from src.game.reputation import Reputation
@@ -42,15 +58,74 @@ def test_stats():
     print("Tras 2s rest:", s.resistencia, s.estado_actual(), s.puede_moverse())
 
 
+def test_job_manager():
+    print("=== PRUEBAS DE GESTOR DE PEDIDOS ===")
+    from src.models.Pedido import PedidoSolicitud
+    gestor = GestorPedidos()
+
+    # Crear pedidos de prueba
+    pedido1 = PedidoSolicitud(
+        id="job1",
+        pickup=[0, 0],
+        dropoff=[1, 1],
+        payout=100,
+        duration=900,  # 15 minutes
+        weight=5,
+        priority=1,
+        release_time=0
+    )
+    pedido2 = PedidoSolicitud(
+        id="job2",
+        pickup=[2, 2],
+        dropoff=[3, 3],
+        payout=200,
+        duration=900,  # 15 minutes
+        weight=10,
+        priority=2,
+        release_time=1
+    )
+
+    # Agregar pedidos
+    gestor.agregar_pedido(pedido1)
+    gestor.agregar_pedido(pedido2)
+    print(f"Pedidos en cola: {len(gestor.ver_pedidos())}")
+
+    # Ver pedidos
+    pedidos = gestor.ver_pedidos()
+    print(f"Primer pedido ID: {pedidos[0].id}")
+
+    # Ordenar por duración
+    ordenados_duracion = gestor.ordenar_por_duracion()
+    print(f"Ordenados por duración: {[p.id for p in ordenados_duracion]}")
+
+    # Ordenar por prioridad
+    ordenados_prioridad = gestor.ordenar_por_prioridad()
+    print(f"Ordenados por prioridad: {[p.id for p in ordenados_prioridad]}")
+
+    # Obtener siguiente
+    siguiente = gestor.obtener_siguiente()
+    print(f"Siguiente pedido: {siguiente.id if siguiente else 'None'}")
+
+    # Pedidos pendientes
+    tiempo_actual = 500  # 500 seconds
+    pendientes = gestor.pedidos_pendientes(tiempo_actual)
+    print(f"Pedidos pendientes: {len(pendientes)}")
+
+    # Pedidos vencidos
+    vencidos = gestor.pedidos_vencidos(tiempo_actual)
+    print(f"Pedidos vencidos: {len(vencidos)}")
+
+
 def main():
     print("Iniciando Courier Quest...")
     TILE_WIDTH = 20
     TILE_HEIGHT = 20
 
-
     BASE_DIR = Path(__file__).resolve().parent
     CACHE_DIR = BASE_DIR / "cache"
     SPRITES_DIR = BASE_DIR / "sprites"
+
+    # --- cargar mapa ---
     try:
         with open(CACHE_DIR / "map.json", "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -58,7 +133,9 @@ def main():
         print("Mapa cargado:", city_map.city_name, city_map.width, city_map.height)
     except Exception as e:
         print(f"Error cargando mapa: {e}")
+        return
 
+    # --- cargar clima ---
     try:
         with open(CACHE_DIR / "TigerCity_weather.json", "r", encoding="utf-8") as f:
             clima_data = json.load(f)
@@ -68,17 +145,38 @@ def main():
         print(f"Error cargando clima: {e}")
         return
 
-    pygame.init()
-    font = pygame.font.SysFont("Arial", 20)
+    # --- cargar pedidos (usa cache si existe; no forzar descarga por defecto) ---
+    pedidos: List = []
+    try:
+        servicio_pedidos = ServicioPedidos(cache_dir=CACHE_DIR)
+        # Usa cache si existe; si quieres forzar descarga pon force_update=True
+        pedidos = servicio_pedidos.cargar_pedidos(force_update=False)
+        print(f"Pedidos cargados desde cache/API: {len(pedidos)}")
+    except FileNotFoundError as fnf:
+        print("No se encontró jobs.json en cache y no se pudo descargar:", fnf)
+    except Exception as e:
+        print(f"Error cargando pedidos: {e}")
 
-    WINDOW_WIDTH = 605
-    WINDOW_HEIGHT = 605
+    # Poblamos GestorPedidos con lo cargado (si hay)
+    gestor = GestorPedidos()
+    for p in pedidos:
+        gestor.agregar_pedido(p)
+
+    # --- inicializar pygame ---
+    pygame.init()
+    font = pygame.font.SysFont("Arial", 18)
+
+    MAP_WIDTH = 605
+    MAP_HEIGHT = 605
+    HUD_WIDTH = 300
+    WINDOW_WIDTH = MAP_WIDTH + HUD_WIDTH
+    WINDOW_HEIGHT = MAP_HEIGHT
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     pygame.display.set_caption(city_map.city_name)
     clock = pygame.time.Clock()
 
     # --- inicializar entidades ---
-    renderer = MapRenderer(city_map, SPRITES_DIR, TILE_WIDTH, TILE_HEIGHT, viewport_size=(WINDOW_WIDTH, WINDOW_HEIGHT))
+    renderer = MapRenderer(city_map, SPRITES_DIR, TILE_WIDTH, TILE_HEIGHT, viewport_size=(MAP_WIDTH, MAP_HEIGHT))
     stats = Stats()
     rep = Reputation()
     player = Player(SPRITES_DIR, stats, rep, TILE_WIDTH, TILE_HEIGHT)
@@ -95,10 +193,22 @@ def main():
     def player_tile_pos():
         return player.x // TILE_WIDTH, player.y // TILE_HEIGHT
 
+    # Demo: imprimir primeros 3 pedidos (info de duración)
+    print("\n--- Demostración de uso de duración con pedidos ---")
+    if pedidos:
+        for pedido in pedidos[:3]:
+            print(f"Pedido ID: {pedido.id}, Duración: {pedido.duration} segundos, Tipo: {type(pedido.duration)}")
+        pedidos_ordenados = sorted(pedidos, key=lambda p: p.duration)
+        print("Pedidos ordenados por duración (primeros 3):")
+        for p in pedidos_ordenados[:3]:
+            print(f"  {p.id} - {p.duration} s")
+    else:
+        print("No hay pedidos en cache.")
+
+    # --- loop principal ---
     running = True
-    print("Entrando al loop principal...")
     while running:
-        dt = clock.tick(60) / 1000.0  # Delta time in seconds
+        dt = clock.tick(60) / 1000.0  # delta seconds
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -110,36 +220,35 @@ def main():
         intensidad = sistema_clima.obtener_intensidad()
         efectos = sistema_clima.obtener_efectos()
 
+        # mover jugador
         keys = pygame.key.get_pressed()
         moved = False
         px, py = player_tile_pos()
         new_x, new_y = px, py
 
         if keys[pygame.K_UP]:
-            new_x, new_y = px, py - 1
+            new_y -= 1
             if not is_blocked(new_x, new_y):
                 player.mover("up", clima=condicion)
                 moved = True
         elif keys[pygame.K_DOWN]:
-            new_x, new_y = px, py + 1
+            new_y += 1
             if not is_blocked(new_x, new_y):
                 player.mover("down", clima=condicion)
                 moved = True
         elif keys[pygame.K_LEFT]:
-            new_x, new_y = px - 1, py
+            new_x -= 1
             if not is_blocked(new_x, new_y):
                 player.mover("izq", clima=condicion)
                 moved = True
         elif keys[pygame.K_RIGHT]:
-            new_x, new_y = px + 1, py
+            new_x += 1
             if not is_blocked(new_x, new_y):
                 player.mover("der", clima=condicion)
                 moved = True
 
         if not moved:
             player.stats.recupera(segundos=dt, rest_point=False)
-
-
 
         # dibujar
         screen.fill((0, 0, 0))
@@ -150,11 +259,18 @@ def main():
         hud_lines = [
             f"Resistencia: {player.stats.resistencia:.1f} | Estado: {player.stats.estado_actual()}",
             f"Reputacion: {player.reputation.valor} | Clima: {condicion} ({intensidad:.2f})",
-            f"Vel={efectos['factor_velocidad']:.2f} ResPen={efectos['penalizacion_resistencia']:.2f}"
+            f"Vel={efectos['factor_velocidad']:.2f} ResPen={efectos['penalizacion_resistencia']:.2f}",
+            f"Pedidos en cola: {len(gestor)}"
         ]
+
+        # Mostrar 3 primeros pedidos por prioridad en HUD
+        urgentes = gestor.ordenar_por_prioridad()[:3]
+        for idx, pedido in enumerate(urgentes):
+            hud_lines.append(f"{idx+1}. {pedido.id} P={pedido.priority} Dur={pedido.duration}s")
+
         for i, line in enumerate(hud_lines):
             hud_surface = font.render(line, True, (255, 255, 255))
-            screen.blit(hud_surface, (10, 10 + i * 22))
+            screen.blit(hud_surface, (MAP_WIDTH + 10, 8 + i * 20))
 
         pygame.display.flip()
 
@@ -165,4 +281,5 @@ def main():
 if __name__ == "__main__":
     test_reputation()
     test_stats()
+    test_job_manager()
     main()
