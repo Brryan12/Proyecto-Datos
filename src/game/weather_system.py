@@ -1,4 +1,3 @@
-# weather_system.py
 import time
 import random
 from typing import Dict, Any, Optional
