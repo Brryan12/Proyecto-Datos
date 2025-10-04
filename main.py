@@ -43,6 +43,7 @@ HUD_WIDTH = 300
 WINDOW_WIDTH = MAP_WIDTH + HUD_WIDTH
 WINDOW_HEIGHT = MAP_HEIGHT
 SCREEN = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+
 def test_reputation():
     print("=== PRUEBAS DE REPUTATION ===")
     rep = Reputation()
@@ -176,9 +177,6 @@ def game():
     gestor = GestorPedidos()
     for p in pedidos:
         gestor.agregar_pedido(p)
-
-
-
     pygame.display.set_caption(city_map.city_name)
     clock = pygame.time.Clock()
 
@@ -217,8 +215,12 @@ def game():
         
 
     # --- loop principal ---
-    while True:
-        dt = clock.tick(60) / 1000.0  # delta seconds        
+    running = True
+    while running:
+        dt = clock.tick(60) / 1000.0  # delta seconds
+        
+        print(player.current_tile_info)
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -296,7 +298,26 @@ def game():
         # dibujar
         SCREEN.fill((0, 0, 0))
         renderer.draw(SCREEN)
+        
+        # Dibujar cuadrícula de debug (opcional)
+        # Si quieres ver los límites de las casillas, descomenta estas líneas:
+        debug_color = (200, 200, 200, 100)
+        for x in range(0, MAP_WIDTH, TILE_WIDTH):
+            pygame.draw.line(SCREEN, debug_color, (x, 0), (x, MAP_HEIGHT), 1)
+        for y in range(0, MAP_HEIGHT, TILE_HEIGHT):
+            pygame.draw.line(SCREEN, debug_color, (0, y), (MAP_WIDTH, y), 1)
+        
+        # Dibujar la posición actual del jugador
         player.draw(SCREEN)
+        
+        # Opcional: Marcar el tile donde está el jugador
+        px, py = map_logic.get_player_tile_pos(player.rect)
+        tile_rect = pygame.Rect(
+            px * TILE_WIDTH - renderer.camera_x, 
+            py * TILE_HEIGHT - renderer.camera_y, 
+            TILE_WIDTH, TILE_HEIGHT
+        )
+        #pygame.draw.rect(SCREEN, (255, 0, 0, 128), tile_rect, 2)
 
         # HUD con estado del jugador y clima (multi-line)
         hud_lines = [
@@ -314,13 +335,16 @@ def game():
         for i, line in enumerate(hud_lines):
             hud_surface = get_font(8).render(line, True, (255, 255, 255))
             SCREEN.blit(hud_surface, (MAP_WIDTH + 10, 8 + i * 20))
-
+            
         if  keys[pygame.K_ESCAPE]:
             paused = pause()
             if not paused:  # Si pause() retorna False, significa que queremos salir al menú principal
                 return
         pygame.display.flip()
 
+    print("Saliendo del juego.")
+    pygame.quit()
+    
 def main_menu():
     pygame.display.set_caption("Courier Quest - Menú Principal")
     while True:
