@@ -1,5 +1,6 @@
 import pygame
 from pathlib import Path
+from typing import Optional
 from src.game.stats_module import Stats
 from src.game.reputation import Reputation
 
@@ -31,13 +32,64 @@ class Player(pygame.sprite.Sprite):
         # scale sprites to tile size
         self.sprites = {k: pygame.transform.scale(v, (tile_width, tile_height)) for k, v in self.sprites.items()}
 
+        self.tile_width = tile_width
+        self.tile_height = tile_height
+        
         self.image = self.sprites[self.direccion]
-        self.rect = self.image.get_rect(topleft=(self.x, self.y))
+        # Calcular posiciones exactas para el centrado
+        center_x = self.x + tile_width // 2
+        center_y = self.y + tile_height // 2
+        
+        # Inicializar rect con el centro en el centro exacto de la casilla
+        self.rect = self.image.get_rect(center=(center_x, center_y))
 
-        # velocidad base en píxeles/frame
+        # velocidad base en píxeles/frame (equivalente a v0 = 3 celdas/seg)
         self.base_speed = 4
+        
+        # Inventario - peso total que lleva el jugador
+        self.peso_total = 0.0
+        
+        # Último tile pisado (para surface_weight)
+        self.current_tile_info = None
+        
+        # Variable para almacenar la velocidad actual calculada
+        self.velocidad_actual = self.base_speed
+        
+    def calcular_velocidad(self, clima_factor: float = 1.0, surface_weight: float = 1.0) -> float:
+        """
+        Calcula la velocidad actual según la fórmula:
+        v = v0 * Mclima * Mpeso * Mrep * Mresistencia * surface_weight
+        
+        Returns:
+            float: Velocidad calculada en píxeles/frame
+        """
+        # Velocidad base (v0)
+        v0 = self.base_speed
+        
+        # Mclima - multiplicador por clima (pasado como parámetro)
+        m_clima = clima_factor
+        
+        # Mpeso = max(0.8, 1 - 0.03 * peso_total)
+        m_peso = max(0.8, 1 - 0.03 * self.peso_total)
+        
+        # Mrep - multiplicador por reputación
+        m_rep = 1.03 if self.reputation.valor >= 90 else 1.0
+        
+        # Mresistencia - factor por estado de cansancio
+        m_resistencia = self.stats.factor_velocidad()
+        
+        # Superficie - factor por tipo de terreno
+        m_superficie = surface_weight
+        
+        # Calcular velocidad final
+        velocidad = v0 * m_clima * m_peso * m_rep * m_resistencia * m_superficie
+        
+        # Debug opcional
+        # print(f"v={velocidad:.2f} = {v0} * {m_clima:.2f} * {m_peso:.2f} * {m_rep:.2f} * {m_resistencia:.2f} * {m_superficie:.2f}")
+        
+        return velocidad
 
-    def mover(self, direccion: str, peso_total: float = 0.0, clima: str = "clear"):
+    def mover(self, direccion: str, peso_total: float = 0.0, clima: str = "clear", clima_factor: float = 1.0, tile_info: Optional[float] = None):
 
         if not self.stats.puede_moverse():
             print("Jugador exhausto, no puede moverse.")
@@ -58,15 +110,48 @@ class Player(pygame.sprite.Sprite):
             return
 
         self.direccion = direccion
+        
+        # Actualizar peso total si se proporciona
+        if peso_total > 0:
+            self.peso_total = peso_total
+            
+        # Obtener factor de superficie si está disponible
+        surface_weight = 1.0
+        if tile_info:
+            # Extraer el valor surface_weight del objeto TileInfo
+            if hasattr(tile_info, 'surface_weight') and tile_info.surface_weight is not None:
+                surface_weight = tile_info.surface_weight
+            self.current_tile_info = tile_info
+            
+        # Calcular velocidad real usando la fórmula completa
+        velocidad = self.calcular_velocidad(clima_factor=clima_factor, surface_weight=surface_weight)
+        real_speed = int(velocidad)
+        
+        # Guardar la velocidad actual para poder mostrarla en el HUD
+        self.velocidad_actual = velocidad
+        
+        # Mover al jugador con mejor control de colisiones
+        new_x = self.x + dx * real_speed
+        new_y = self.y + dy * real_speed
+        
+        # Actualizar posición
+        self.x = new_x
+        self.y = new_y
+        
+        # Asegurarnos de que el jugador esté perfectamente alineado con la cuadrícula
+        # Calcular la casilla actual
+        current_tile_x = int(self.x // self.tile_width)
+        current_tile_y = int(self.y // self.tile_height)
+        
+        # Calcular el centro exacto de la casilla
+        center_x = (current_tile_x * self.tile_width) + (self.tile_width // 2)
+        center_y = (current_tile_y * self.tile_height) + (self.tile_height // 2)
+        
+        # Alinear el centro del rectángulo con el centro de la casilla
+        self.rect.center = (center_x, center_y)
 
-        factor = self.stats.factor_velocidad()
-        real_speed = int(self.base_speed * factor)
-
-        self.x += dx * real_speed
-        self.y += dy * real_speed
-        self.rect.topleft = (self.x, self.y)
-
-        self.stats.consume_por_mover(celdas=1, peso_total=peso_total, condicion_clima=clima)
+        # Consumir resistencia si está descomentado
+        #self.stats.consume_por_mover(celdas=1, peso_total=self.peso_total, condicion_clima=clima)
 
         self.image = self.sprites[self.direccion]
 
@@ -74,6 +159,15 @@ class Player(pygame.sprite.Sprite):
         self.reputation.registrar_entrega(estado)
 
     def draw(self, screen: pygame.Surface):
+        """
+        Dibuja el sprite del jugador en la pantalla.
+        Usa el rectángulo centrado para posicionar correctamente el sprite.
+        
+        Args:
+            screen: Superficie de pygame donde dibujar
+        """
+        # Dibujar el sprite usando el rectángulo que ya está centrado
+        # Usamos el método rect.topleft para que pygame dibuje desde la esquina superior izquierda
         screen.blit(self.image, self.rect.topleft)
 
     def nuevo_dia(self):

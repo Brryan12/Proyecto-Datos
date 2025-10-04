@@ -179,21 +179,88 @@ def main():
     renderer = MapRenderer(city_map, SPRITES_DIR, TILE_WIDTH, TILE_HEIGHT, viewport_size=(MAP_WIDTH, MAP_HEIGHT))
     stats = Stats()
     rep = Reputation()
-    player = Player(SPRITES_DIR, stats, rep, TILE_WIDTH, TILE_HEIGHT)
+    
+    # Inicializar jugador con una posición específica en el mapa (por ejemplo, en el centro)
+    # Multiplicamos por TILE_WIDTH/HEIGHT para convertir de coordenadas de tile a píxeles
+    initial_tile_x = 15  # Ajustar según la posición inicial deseada
+    initial_tile_y = 15  # Ajustar según la posición inicial deseada
+    
+    # Calcular la posición exacta para que el jugador esté centrado en la casilla
+    # Lo importante es que la posición inicial sea un múltiplo exacto del tamaño de la casilla
+    start_x = initial_tile_x * TILE_WIDTH
+    start_y = initial_tile_y * TILE_HEIGHT
+    
+    player = Player(SPRITES_DIR, stats, rep, TILE_WIDTH, TILE_HEIGHT, 
+                    start_x=start_x, 
+                    start_y=start_y)
 
-    def is_blocked(x, y):
+    def is_blocked(x: int, y: int) -> bool:
+        """
+        Determina si una posición en el mapa está bloqueada.
+        
+        Args:
+            x: Coordenada x en tiles
+            y: Coordenada y en tiles
+            
+        Returns:
+            True si la posición está bloqueada, False si es accesible
+        """
+        # Verificar límites del mapa (incluir el borde)
         if x < 0 or y < 0 or x >= city_map.width or y >= city_map.height:
             return True
-        tile_code = city_map.tiles[y][x]
-        tile_info = city_map.legend.get(tile_code)
-        if tile_info and tile_info.blocked:
+        
+        try:
+            # Obtener código del tile y verificar en la leyenda
+            tile_code = city_map.tiles[y][x]
+            tile_info = city_map.legend.get(tile_code)
+            
+            if tile_info is None:
+                return True  # Si no hay información del tile, bloqueado por seguridad
+            
+            # Si el tile está explícitamente marcado como bloqueado
+            if tile_info.blocked == True:
+                return True
+                
+            # Si es un edificio, siempre bloqueado
+            if tile_info.name == "building":
+                return True
+                
+            # Parques: pueden ser caminables o no según tu diseño
+            if tile_info.name == "park":
+                # Si quieres que los parques sean caminables, retorna False
+                # Si quieres que los parques sean bloqueados, retorna True
+                return False  # Los parques son caminables en este juego
+                
+            # Calles siempre caminables
+            if tile_info.name == "street":
+                return False
+                
+            # Por defecto, si no sabemos qué es, lo consideramos bloqueado
             return True
-        return False
+        
+        except (IndexError, AttributeError):
+            # Seguridad adicional para errores de índice o atributos
+            return True
 
     def player_tile_pos():
-        return player.x // TILE_WIDTH, player.y // TILE_HEIGHT
+        """
+        Calcula la posición actual del jugador en coordenadas de tiles.
+        Usa el centro del sprite para determinar en qué tile está.
+        
+        Returns:
+            Tuple[int, int]: Coordenadas (x, y) en tiles
+        """
+        # Usar el centro del rect para el cálculo (más preciso)
+        center_x, center_y = player.rect.center
+        
+        # Convertir a coordenadas de tiles
+        tile_x = int(center_x // TILE_WIDTH)
+        tile_y = int(center_y // TILE_HEIGHT)
+        
+        return tile_x, tile_y
 
     # Demo: imprimir primeros 3 pedidos (info de duración)
+
     print("\n--- Demostración de uso de duración con pedidos ---")
     if pedidos:
         for pedido in pedidos[:3]:
@@ -204,12 +271,15 @@ def main():
             print(f"  {p.id} - {p.duration} s")
     else:
         print("No hay pedidos en cache.")
+        
 
     # --- loop principal ---
     running = True
     while running:
         dt = clock.tick(60) / 1000.0  # delta seconds
-
+        
+        print(player.current_tile_info)
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -226,25 +296,62 @@ def main():
         px, py = player_tile_pos()
         new_x, new_y = px, py
 
-        if keys[pygame.K_UP]:
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
             new_y -= 1
             if not is_blocked(new_x, new_y):
-                player.mover("up", clima=condicion)
+                # Obtener información del tile para surface_weight
+                tile_code = city_map.tiles[new_y][new_x]
+                tile_info = city_map.legend.get(tile_code)
+                
+                # Obtener factor de clima desde sistema_clima
+                clima_factor = efectos["factor_velocidad"]
+                
+                # Mover al jugador con todos los factores
+                player.mover(
+                    direccion="up", 
+                    clima=condicion, 
+                    clima_factor=clima_factor,
+                    tile_info=tile_info,
+                )
                 moved = True
-        elif keys[pygame.K_DOWN]:
+        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
             new_y += 1
             if not is_blocked(new_x, new_y):
-                player.mover("down", clima=condicion)
+                tile_code = city_map.tiles[new_y][new_x]
+                tile_info = city_map.legend.get(tile_code)
+                clima_factor = efectos["factor_velocidad"]
+                player.mover(
+                    direccion="down", 
+                    clima=condicion, 
+                    clima_factor=clima_factor,
+                    tile_info=tile_info,
+                )
                 moved = True
-        elif keys[pygame.K_LEFT]:
+        elif keys[pygame.K_LEFT] or keys[pygame.K_a]:
             new_x -= 1
             if not is_blocked(new_x, new_y):
-                player.mover("izq", clima=condicion)
+                tile_code = city_map.tiles[new_y][new_x]
+                tile_info = city_map.legend.get(tile_code)
+                clima_factor = efectos["factor_velocidad"]
+                player.mover(
+                    direccion="izq", 
+                    clima=condicion, 
+                    clima_factor=clima_factor,
+                    tile_info=tile_info,
+                )
                 moved = True
-        elif keys[pygame.K_RIGHT]:
+        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             new_x += 1
             if not is_blocked(new_x, new_y):
-                player.mover("der", clima=condicion)
+                tile_code = city_map.tiles[new_y][new_x]
+                tile_info = city_map.legend.get(tile_code)
+                clima_factor = efectos["factor_velocidad"]
+                player.mover(
+                    direccion="der", 
+                    clima=condicion, 
+                    clima_factor=clima_factor,
+                    tile_info=tile_info,
+                )
                 moved = True
 
         if not moved:
@@ -253,14 +360,33 @@ def main():
         # dibujar
         screen.fill((0, 0, 0))
         renderer.draw(screen)
+        
+        # Dibujar cuadrícula de debug (opcional)
+        # Si quieres ver los límites de las casillas, descomenta estas líneas:
+        debug_color = (200, 200, 200, 100)
+        for x in range(0, MAP_WIDTH, TILE_WIDTH):
+            pygame.draw.line(screen, debug_color, (x, 0), (x, MAP_HEIGHT), 1)
+        for y in range(0, MAP_HEIGHT, TILE_HEIGHT):
+            pygame.draw.line(screen, debug_color, (0, y), (MAP_WIDTH, y), 1)
+        
+        # Dibujar la posición actual del jugador
         player.draw(screen)
+        
+        # Opcional: Marcar el tile donde está el jugador
+        px, py = player_tile_pos()
+        tile_rect = pygame.Rect(
+            px * TILE_WIDTH - renderer.camera_x, 
+            py * TILE_HEIGHT - renderer.camera_y, 
+            TILE_WIDTH, TILE_HEIGHT
+        )
+        #pygame.draw.rect(screen, (255, 0, 0, 128), tile_rect, 2)
 
         # HUD con estado del jugador y clima (multi-line)
         hud_lines = [
             f"Resistencia: {player.stats.resistencia:.1f} | Estado: {player.stats.estado_actual()}",
             f"Reputacion: {player.reputation.valor} | Clima: {condicion} ({intensidad:.2f})",
-            f"Vel={efectos['factor_velocidad']:.2f} ResPen={efectos['penalizacion_resistencia']:.2f}",
-            f"Pedidos en cola: {len(gestor)}"
+            f"Velocidad: {player.velocidad_actual:.2f} | ResPen: {efectos['penalizacion_resistencia']:.2f}",
+            f"Peso: {player.peso_total} | Pedidos en cola: {len(gestor)}"
         ]
 
         # Mostrar 3 primeros pedidos por prioridad en HUD
