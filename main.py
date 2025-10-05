@@ -337,7 +337,7 @@ def game():
             SCREEN.blit(hud_surface, (MAP_WIDTH + 10, 8 + i * 20))
             
         if  keys[pygame.K_ESCAPE]:
-            paused = pause()
+            paused = pause(player, stats, rep, gestor, city_map.city_name)
             if not paused:  # Si pause() retorna False, significa que queremos salir al menú principal
                 return
         pygame.display.flip()
@@ -392,7 +392,7 @@ def main_menu():
 
         pygame.display.update()
         
-def pause():
+def pause(player, stats, rep, gestor, original_caption):
     pygame.display.set_caption("Courier Quest - Pausa")
     while True:
         SCREEN.blit(BG, (0, 0))
@@ -405,21 +405,23 @@ def pause():
 
         # Ajustar el tamaño de la fuente según el ancho de la pantalla (reducido)
         title_font_size = min(45, WINDOW_WIDTH // 20)
-        button_font_size = min(32, WINDOW_WIDTH // 28)
+        button_font_size = min(28, WINDOW_WIDTH // 32)  # Reducido para 4 botones
 
         MENU_TEXT = get_font(title_font_size).render("PAUSED", True, "#b68f40")
-        MENU_RECT = MENU_TEXT.get_rect(center=(center_x, center_y - 200))
+        MENU_RECT = MENU_TEXT.get_rect(center=(center_x, center_y - 220))
 
-        RESUME_BUTTON = Button(image=pygame.image.load("sprites/Play Rect.png"), pos=(center_x, center_y - 100), 
+        RESUME_BUTTON = Button(None, pos=(center_x, center_y - 120), 
                             text_input="RESUME", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
-        MAIN_MENU_BUTTON = Button(image=pygame.image.load("sprites/Options Rect.png"), pos=(center_x, center_y + 20), 
+        SAVE_BUTTON = Button(None, pos=(center_x, center_y - 40), 
+                            text_input="SAVE GAME", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
+        MAIN_MENU_BUTTON = Button(None, pos=(center_x, center_y + 40), 
                             text_input="MAIN MENU", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
-        QUIT_BUTTON = Button(image=pygame.image.load("sprites/Quit Rect.png"), pos=(center_x, center_y + 140), 
+        QUIT_BUTTON = Button(None, pos=(center_x, center_y + 120), 
                             text_input="QUIT", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
 
         SCREEN.blit(MENU_TEXT, MENU_RECT)
 
-        for button in [RESUME_BUTTON, MAIN_MENU_BUTTON, QUIT_BUTTON]:
+        for button in [RESUME_BUTTON, SAVE_BUTTON, MAIN_MENU_BUTTON, QUIT_BUTTON]:
             button.changeColor(MENU_MOUSE_POS)
             button.update(SCREEN)
         
@@ -429,15 +431,19 @@ def pause():
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if RESUME_BUTTON.checkForInput(MENU_MOUSE_POS):
+                    pygame.display.set_caption(original_caption)  # Restaurar caption original
                     return True  # Retorna True para continuar el juego
+                if SAVE_BUTTON.checkForInput(MENU_MOUSE_POS):
+                    try:
+                        pass
+                    except Exception as e:
+                        print(f"Error al guardar: {e}")
+                    # Continuar en pausa después de guardar
                 if MAIN_MENU_BUTTON.checkForInput(MENU_MOUSE_POS):
                     return False  # Retorna False para ir al menú principal
                 if QUIT_BUTTON.checkForInput(MENU_MOUSE_POS):
                     pygame.quit()
                     sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:  # También permite salir de pausa con ESC
-                    return True
 
         pygame.display.update()
 
