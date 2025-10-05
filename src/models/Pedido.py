@@ -1,14 +1,14 @@
 from typing import List
 from pydantic import BaseModel
-from datetime import datetime
 
 
 class PedidoSolicitud(BaseModel):
     id: str
-    recoger: List[int]      # coordenada de llegada
-    llevar: List[int]     # coordenada para dar el pedido
-    pago: int               # pago recibido
-    deadline: datetime     # fecha para cumplir la solicitud
-    peso: int               # peso del pedido
-    prioridad: int          # tipo de prioridad
-    tiempo: int          
+    pickup: List[int]       # coordenada de recogida [x, y]
+    dropoff: List[int]      # coordenada de entrega [x, y]
+    payout: int             # pago recibido
+    duration: int           # duración en segundos (tiempo límite del pedido)
+    weight: int             # peso del pedido
+    priority: int           # prioridad del pedido (0 normal, 1 urgente, etc.)
+    release_time: int       # tiempo de liberación en segundos desde el inicio del juego
+
