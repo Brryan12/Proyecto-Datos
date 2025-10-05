@@ -144,3 +144,12 @@ class ManejadorAPI:
                     tile.blocked
                 ])
         print(f"✅ Map saved to {filepath}")
+
+    def update_data(self):
+        """Descarga y actualiza todos los datos (clima, jobs, mapa)"""
+        print("🔄 Actualizando datos desde la API...")
+        city = "TigerCity"
+        self.get_weather(city, mode="seed", save=True)
+        self.get_jobs(save=True)
+        self.get_map(save=True)
+        print("✅ Datos actualizados!")

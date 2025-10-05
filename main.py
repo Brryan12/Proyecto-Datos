@@ -1,4 +1,3 @@
-# src/main.py
 import sys
 import pygame
 import json
@@ -7,7 +6,8 @@ from typing import List
 from src.models.CityMap import CityMap
 from src.models.ClimaData import ClimaData
 from src.game.button import Button
-
+from src.game.package_notifier import NotificadorPedidos
+from src.api.ManejadorAPI import ManejadorAPI
 
 # Intento de import seguro de ServicioPedidos (soporta dos ubicaciones comunes)
 try:
@@ -33,6 +33,9 @@ from src.game.weather_system import SistemaClima
 pygame.init()
 
 BG = pygame.image.load("./sprites/Background.png")
+BASE_DIR = Path(__file__).resolve().parent
+CACHE_DIR = BASE_DIR / "cache"
+SPRITES_DIR = BASE_DIR / "sprites"
 
 def get_font(size): # Returns Press-Start-2P in the desired size
     return pygame.font.Font("./sprites/font.ttf", size)
@@ -74,62 +77,6 @@ def test_stats():
     s.recupera(segundos=2, rest_point=True)
     print("Tras 2s rest:", s.resistencia, s.estado_actual(), s.puede_moverse())
 
-def test_job_manager():
-    print("=== PRUEBAS DE GESTOR DE PEDIDOS ===")
-    from src.models.Pedido import PedidoSolicitud
-    gestor = GestorPedidos()
-
-    # Crear pedidos de prueba
-    pedido1 = PedidoSolicitud(
-        id="job1",
-        pickup=[0, 0],
-        dropoff=[1, 1],
-        payout=100,
-        duration=900,  # 15 minutes
-        weight=5,
-        priority=1,
-        release_time=0
-    )
-    pedido2 = PedidoSolicitud(
-        id="job2",
-        pickup=[2, 2],
-        dropoff=[3, 3],
-        payout=200,
-        duration=900,  # 15 minutes
-        weight=10,
-        priority=2,
-        release_time=1
-    )
-
-    # Agregar pedidos
-    gestor.agregar_pedido(pedido1)
-    gestor.agregar_pedido(pedido2)
-    print(f"Pedidos en cola: {len(gestor.ver_pedidos())}")
-
-    # Ver pedidos
-    pedidos = gestor.ver_pedidos()
-    print(f"Primer pedido ID: {pedidos[0].id}")
-
-    # Ordenar por duración
-    ordenados_duracion = gestor.ordenar_por_duracion()
-    print(f"Ordenados por duración: {[p.id for p in ordenados_duracion]}")
-
-    # Ordenar por prioridad
-    ordenados_prioridad = gestor.ordenar_por_prioridad()
-    print(f"Ordenados por prioridad: {[p.id for p in ordenados_prioridad]}")
-
-    # Obtener siguiente
-    siguiente = gestor.obtener_siguiente()
-    print(f"Siguiente pedido: {siguiente.id if siguiente else 'None'}")
-
-    # Pedidos pendientes
-    tiempo_actual = 500  # 500 seconds
-    pendientes = gestor.pedidos_pendientes(tiempo_actual)
-    print(f"Pedidos pendientes: {len(pendientes)}")
-
-    # Pedidos vencidos
-    vencidos = gestor.pedidos_vencidos(tiempo_actual)
-    print(f"Pedidos vencidos: {len(vencidos)}")
 
 
 def game():
@@ -137,9 +84,7 @@ def game():
     TILE_WIDTH = 20
     TILE_HEIGHT = 20
 
-    BASE_DIR = Path(__file__).resolve().parent
-    CACHE_DIR = BASE_DIR / "cache"
-    SPRITES_DIR = BASE_DIR / "sprites"
+
 
     # --- cargar mapa ---
     try:
@@ -168,15 +113,22 @@ def game():
         # Usa cache si existe; si quieres forzar descarga pon force_update=True
         pedidos = servicio_pedidos.cargar_pedidos(force_update=False)
         print(f"Pedidos cargados desde cache/API: {len(pedidos)}")
+        
+        # Mostrar información de release_time de cada pedido
+        for pedido in pedidos:
+            print(f"Pedido {pedido.id}: release_time = {pedido.release_time}s")
+            
     except FileNotFoundError as fnf:
         print("No se encontró jobs.json en cache y no se pudo descargar:", fnf)
     except Exception as e:
         print(f"Error cargando pedidos: {e}")
 
-    # Poblamos GestorPedidos con lo cargado (si hay)
-    gestor = GestorPedidos()
-    for p in pedidos:
-        gestor.agregar_pedido(p)
+    # --- Inicializar sistemas ---
+    gestor = GestorPedidos()  # Tu gestor existente
+    notificador = NotificadorPedidos(WINDOW_WIDTH, WINDOW_HEIGHT)
+    
+    # Configurar pedidos en el notificador (todos pasan por aquí primero)
+    notificador.agregar_pedidos_iniciales(pedidos)
     pygame.display.set_caption(city_map.city_name)
     clock = pygame.time.Clock()
 
@@ -208,7 +160,7 @@ def game():
             print(f"Pedido ID: {pedido.id}, Duración: {pedido.duration} segundos, Tipo: {type(pedido.duration)}")
         pedidos_ordenados = sorted(pedidos, key=lambda p: p.duration)
         print("Pedidos ordenados por duración (primeros 3):")
-        for p in pedidos_ordenados[:3]:
+        for p in pedidos_ordenados:
             print(f"  {p.id} - {p.duration} s")
     else:
         print("No hay pedidos en cache.")
@@ -216,88 +168,144 @@ def game():
 
     # --- loop principal ---
     running = True
+    tiempo_inicio = pygame.time.get_ticks()
+    
+    # Variables para controlar el tiempo pausado
+    tiempo_total_pausado = 0  # Tiempo total que ha estado pausado el juego
+    tiempo_inicio_pausa = None  # Momento cuando comenzó la pausa actual
+    juego_pausado = False  # Estado de pausa
+    
     while running:
         dt = clock.tick(60) / 1000.0  # delta seconds
         
+        # Determinar si el juego debe estar pausado
+        hay_notificacion_activa = notificador.activo
+        
+        # Manejar transiciones de pausa
+        if hay_notificacion_activa and not juego_pausado:
+            # Comenzar pausa por notificación
+            juego_pausado = True
+            tiempo_inicio_pausa = pygame.time.get_ticks()
+        elif not hay_notificacion_activa and juego_pausado and tiempo_inicio_pausa is not None:
+            # Terminar pausa por notificación
+            juego_pausado = False
+            tiempo_total_pausado += pygame.time.get_ticks() - tiempo_inicio_pausa
+            tiempo_inicio_pausa = None
+        
+        # Calcular tiempo actual en segundos desde el inicio (excluyendo tiempo pausado)
+        tiempo_actual_ms = pygame.time.get_ticks() - tiempo_inicio - tiempo_total_pausado
+        if juego_pausado and tiempo_inicio_pausa is not None:
+            # Si está pausado actualmente, no contar el tiempo desde que comenzó la pausa
+            tiempo_actual_ms -= (pygame.time.get_ticks() - tiempo_inicio_pausa)
+        
+        tiempo_actual_segundos = max(0, tiempo_actual_ms // 1000)
+        
+        # ACTUALIZAR NOTIFICADOR - Solo cuando no esté pausado
+        if not juego_pausado:
+            notificador.actualizar(tiempo_actual_segundos)
+        
         print(player.current_tile_info)
         
+        # Manejo de eventos
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+                
+            # Manejar eventos del notificador (Z/X para aceptar/rechazar)
+            if notificador.manejar_eventos(event, gestor):
+                continue  # Evento manejado, continuar
 
-        # actualizar clima
-        sistema_clima.actualizar()
+        # Obtener datos del clima (siempre disponibles para el HUD)
         condicion = sistema_clima.obtener_condicion()
         intensidad = sistema_clima.obtener_intensidad()
         efectos = sistema_clima.obtener_efectos()
 
-        # mover jugador
+        # Obtener teclas presionadas (siempre disponible para ESC y otros controles)
         keys = pygame.key.get_pressed()
-        moved = False
-        px, py = map_logic.get_player_tile_pos(player.rect)
-        new_x, new_y = px, py
 
-        if keys[pygame.K_UP] or keys[pygame.K_w]:
-            new_y -= 1
-            if not map_logic.is_blocked(new_x, new_y):
-                # Obtener información del tile para surface_weight
-                tile_info = map_logic.get_tile_info(new_x, new_y)
-                
-                # Obtener factor de clima desde sistema_clima
-                clima_factor = efectos["factor_velocidad"]
-                
-                # Mover al jugador con todos los factores
-                player.mover(
-                    direccion="up", 
-                    clima=condicion, 
-                    clima_factor=clima_factor,
-                    tile_info=tile_info,
-                )
-                moved = True
-        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            new_y += 1
-            if not map_logic.is_blocked(new_x, new_y):
-                tile_info = map_logic.get_tile_info(new_x, new_y)
-                clima_factor = efectos["factor_velocidad"]
-                player.mover(
-                    direccion="down", 
-                    clima=condicion, 
-                    clima_factor=clima_factor,
-                    tile_info=tile_info,
-                )
-                moved = True
-        elif keys[pygame.K_LEFT] or keys[pygame.K_a]:
-            new_x -= 1
-            if not map_logic.is_blocked(new_x, new_y):
-                tile_info = map_logic.get_tile_info(new_x, new_y)
-                clima_factor = efectos["factor_velocidad"]
-                player.mover(
-                    direccion="izq", 
-                    clima=condicion, 
-                    clima_factor=clima_factor,
-                    tile_info=tile_info,
-                )
-                moved = True
-        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-            new_x += 1
-            if not map_logic.is_blocked(new_x, new_y):
-                tile_info = map_logic.get_tile_info(new_x, new_y)
-                clima_factor = efectos["factor_velocidad"]
-                player.mover(
-                    direccion="der", 
-                    clima=condicion, 
-                    clima_factor=clima_factor,
-                    tile_info=tile_info,
-                )
-                moved = True
+        # --- Lógica del juego (solo si no hay notificación activa) ---
+        if not notificador.activo:
+            # actualizar clima (solo cuando no esté pausado)
+            if not juego_pausado:
+                sistema_clima.actualizar()
+                # Refrescar datos después de la actualización
+                condicion = sistema_clima.obtener_condicion()
+                intensidad = sistema_clima.obtener_intensidad()
+                efectos = sistema_clima.obtener_efectos()
 
-        if not moved:
-            player.stats.recupera(segundos=dt, rest_point=False)
+            # mover jugador
+            moved = False
+            px, py = map_logic.get_player_tile_pos(player.rect)
+            new_x, new_y = px, py
+
+            if keys[pygame.K_UP] or keys[pygame.K_w]:
+                new_y -= 1
+                if not map_logic.is_blocked(new_x, new_y):
+                    # Obtener información del tile para surface_weight
+                    tile_info = map_logic.get_tile_info(new_x, new_y)
+                    
+                    # Obtener factor de clima desde sistema_clima
+                    clima_factor = efectos["factor_velocidad"]
+                    
+                    # Mover al jugador con todos los factores
+                    player.mover(
+                        direccion="up", 
+                        clima=condicion, 
+                        clima_factor=clima_factor,
+                        tile_info=tile_info,
+                    )
+                    moved = True
+            elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
+                new_y += 1
+                if not map_logic.is_blocked(new_x, new_y):
+                    tile_info = map_logic.get_tile_info(new_x, new_y)
+                    clima_factor = efectos["factor_velocidad"]
+                    player.mover(
+                        direccion="down", 
+                        clima=condicion, 
+                        clima_factor=clima_factor,
+                        tile_info=tile_info,
+                    )
+                    moved = True
+            elif keys[pygame.K_LEFT] or keys[pygame.K_a]:
+                new_x -= 1
+                if not map_logic.is_blocked(new_x, new_y):
+                    tile_info = map_logic.get_tile_info(new_x, new_y)
+                    clima_factor = efectos["factor_velocidad"]
+                    player.mover(
+                        direccion="izq", 
+                        clima=condicion, 
+                        clima_factor=clima_factor,
+                        tile_info=tile_info,
+                    )
+                    moved = True
+            elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+                new_x += 1
+                if not map_logic.is_blocked(new_x, new_y):
+                    tile_info = map_logic.get_tile_info(new_x, new_y)
+                    clima_factor = efectos["factor_velocidad"]
+                    player.mover(
+                        direccion="der", 
+                        clima=condicion, 
+                        clima_factor=clima_factor,
+                        tile_info=tile_info,
+                    )
+                    moved = True
+
+            if not moved:
+                # Solo recuperar resistencia cuando no esté pausado
+                if not juego_pausado:
+                    player.stats.recupera(segundos=dt, rest_point=False)
+    
 
         # dibujar
         SCREEN.fill((0, 0, 0))
         renderer.draw(SCREEN)
+        
+        # Dibujar paquetes y puntos de entrega para pedidos activos
+        pedidos_activos = gestor.ver_pedidos()
+        renderer.draw_package_icons(SCREEN, pedidos_activos)
         
         # Dibujar cuadrícula de debug (opcional)
         # Si quieres ver los límites de las casillas, descomenta estas líneas:
@@ -319,25 +327,46 @@ def game():
         )
         #pygame.draw.rect(SCREEN, (255, 0, 0, 128), tile_rect, 2)
 
-        # HUD con estado del jugador y clima (multi-line)
+        # --- HUD Actualizado ---
+        tiempo_total_segundos = 900
+        tiempo_restante_segundos = max(0, tiempo_total_segundos - tiempo_actual_segundos)
+        minutos = tiempo_restante_segundos // 60
+        segundos = tiempo_restante_segundos % 60
+        
         hud_lines = [
+            f"Tiempo: {tiempo_actual_segundos}s | Restante: {minutos:02d}:{segundos:02d}",
             f"Resistencia: {player.stats.resistencia:.1f} | Estado: {player.stats.estado_actual()}",
-            f"Reputacion: {player.reputation.valor} | Clima: {condicion} ({intensidad:.2f})",
-            f"Velocidad: {player.velocidad_actual:.2f} | ResPen: {efectos['penalizacion_resistencia']:.2f}",
-            f"Peso: {player.peso_total} | Pedidos en cola: {len(gestor)}"
+            f"Reputacion: {player.reputation.valor} | Clima: {condicion}",
+            f"Pedidos activos: {len(gestor)} | Pendientes: {notificador.obtener_pedidos_pendientes_count()}",
+            f"Estado: {'PAUSADO' if juego_pausado else 'ACTIVO'} | Notif: {'SI' if notificador.activo else 'NO'}"
         ]
 
-        # Mostrar 3 primeros pedidos por prioridad en HUD
-        urgentes = gestor.ordenar_por_prioridad()[:3]
+        urgentes = gestor.ordenar_por_prioridad()
         for idx, pedido in enumerate(urgentes):
-            hud_lines.append(f"{idx+1}. {pedido.id} P={pedido.priority} Dur={pedido.duration}s")
+            tiempo_restante_pedido = max(0, (pedido.release_time + pedido.duration) - tiempo_actual_segundos)
+            hud_lines.append(f"{idx+1}. {pedido.id} P:{pedido.priority} T:{tiempo_restante_pedido}s")
 
         for i, line in enumerate(hud_lines):
             hud_surface = get_font(8).render(line, True, (255, 255, 255))
             SCREEN.blit(hud_surface, (MAP_WIDTH + 10, 8 + i * 20))
+
+        # DIBUJAR NOTIFICACIÓN (si está activa) - Esto va al final
+        notificador.dibujar(SCREEN)
             
-        if  keys[pygame.K_ESCAPE]:
+        if keys and keys[pygame.K_ESCAPE]:
+            # Pausar el tiempo cuando se entra al menú de pausa
+            if not juego_pausado:
+                juego_pausado = True
+                tiempo_inicio_pausa = pygame.time.get_ticks()
+                
             paused = pause(player, stats, rep, gestor, city_map.city_name)
+            
+            # Reanudar el tiempo cuando se sale del menú de pausa
+            if juego_pausado and tiempo_inicio_pausa is not None:
+                tiempo_total_pausado += pygame.time.get_ticks() - tiempo_inicio_pausa
+                juego_pausado = False
+                tiempo_inicio_pausa = None
+                
             if not paused:  # Si pause() retorna False, significa que queremos salir al menú principal
                 return
         pygame.display.flip()
@@ -347,6 +376,9 @@ def game():
     
 def main_menu():
     pygame.display.set_caption("Courier Quest - Menú Principal")
+    # Agregar al inicio de game() después de crear BASE_DIR
+    api = ManejadorAPI(cache_dir=CACHE_DIR)
+    api.update_data()  # Actualiza TODO (clima, mapa, pedidos)
     while True:
         SCREEN.blit(BG, (0, 0))
 
@@ -394,6 +426,9 @@ def main_menu():
         
 def pause(player, stats, rep, gestor, original_caption):
     pygame.display.set_caption("Courier Quest - Pausa")
+    api = ManejadorAPI(cache_dir=CACHE_DIR)
+    api.update_data()
+
     while True:
         SCREEN.blit(BG, (0, 0))
 
@@ -449,7 +484,4 @@ def pause(player, stats, rep, gestor, original_caption):
 
 
 if __name__ == "__main__":
-    test_reputation()
-    test_stats()
-    test_job_manager()
     main_menu()

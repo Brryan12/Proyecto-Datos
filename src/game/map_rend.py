@@ -47,6 +47,10 @@ class MapRenderer:
         self.sprites["B"] = self._cargar_sprite("Spr_edificio1.png")
         self.sprites["C"] = self._cargar_sprite("Spr_acera.png")
         self.sprites["P"] = self._cargar_sprite("Spr_parque.png")
+        
+        # Cargar sprites para paquetes y puntos de entrega
+        self.sprites["package"] = self._cargar_sprite("package.png")
+        self.sprites["delivery_point"] = self._cargar_sprite("delivery_point.png")
 
     def set_camera_pos(self, px: int, py: int) -> None:
         self.camera_x = int(px)
@@ -104,3 +108,45 @@ class MapRenderer:
                     color = self.TILE_COLORS.get(code, self.TILE_COLORS["default"])
                     pygame.draw.rect(screen, color, rect)
                     pygame.draw.rect(screen, (50, 50, 50), rect, 1)
+
+    def draw_package_icons(self, screen: pygame.Surface, pedidos_activos) -> None:
+        """Dibuja íconos de paquetes en las posiciones de recogida y entrega."""
+        for pedido in pedidos_activos:
+            # Dibujar paquete en posición de recogida (pickup)
+            pickup_x, pickup_y = pedido.pickup
+            sx, sy = self.tile_to_screen(pickup_x, pickup_y)
+            
+            # Verificar que esté dentro del viewport
+            if self._is_tile_visible(pickup_x, pickup_y):
+                package_sprite = self.sprites.get("package")
+                if package_sprite:
+                    screen.blit(package_sprite, (sx, sy))
+                else:
+                    # Fallback: dibujar un rectángulo amarillo
+                    pygame.draw.rect(screen, (255, 255, 0), (sx, sy, self.tile_width, self.tile_height))
+                    pygame.draw.rect(screen, (200, 200, 0), (sx, sy, self.tile_width, self.tile_height), 2)
+            
+            # Dibujar punto de entrega (dropoff)
+            dropoff_x, dropoff_y = pedido.dropoff
+            sx, sy = self.tile_to_screen(dropoff_x, dropoff_y)
+            
+            # Verificar que esté dentro del viewport
+            if self._is_tile_visible(dropoff_x, dropoff_y):
+                delivery_sprite = self.sprites.get("delivery_point")
+                if delivery_sprite:
+                    screen.blit(delivery_sprite, (sx, sy))
+                else:
+                    # Fallback: dibujar un rectángulo rojo
+                    pygame.draw.rect(screen, (255, 100, 100), (sx, sy, self.tile_width, self.tile_height))
+                    pygame.draw.rect(screen, (200, 50, 50), (sx, sy, self.tile_width, self.tile_height), 2)
+
+    def _is_tile_visible(self, tx: int, ty: int) -> bool:
+        """Verifica si una casilla está visible en el viewport actual."""
+        viewport_w, viewport_h = (self.viewport_size if self.viewport_size else (800, 600))
+        
+        start_x = max(0, self.camera_x // self.tile_width)
+        start_y = max(0, self.camera_y // self.tile_height)
+        end_x = min(self.city_map.width, (self.camera_x + viewport_w) // self.tile_width + 1)
+        end_y = min(self.city_map.height, (self.camera_y + viewport_h) // self.tile_height + 1)
+        
+        return start_x <= tx < end_x and start_y <= ty < end_y

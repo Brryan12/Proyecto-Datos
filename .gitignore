@@ -23,7 +23,7 @@ build/
 htmlcov/
 .tox/
 .nox/
-
+cache/
 # Archivos de IDE
 .idea/
 .vscode/
