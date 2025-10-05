@@ -28,6 +28,7 @@ from src.game.stats_module import Stats
 from src.game.reputation import Reputation
 from src.game.player import Player
 from src.game.weather_system import SistemaClima
+from src.game.undo import UndoSystem
 
 # Inicializar pygame antes de usar cualquier función de pygame
 pygame.init()
@@ -150,6 +151,11 @@ def game():
                     start_x=start_x, 
                     start_y=start_y)
 
+    # --- Inicializar sistema de deshacer ---
+    undo_system = UndoSystem(10000)  # Permite deshacer hasta 50 movimientos
+    # Guardar estado inicial
+    undo_system.save_state(player, 0, [])
+
 
 
     # Demo: imprimir primeros 3 pedidos (info de duración)
@@ -215,6 +221,25 @@ def game():
             # Manejar eventos del notificador (Z/X para aceptar/rechazar)
             if notificador.manejar_eventos(event, gestor):
                 continue  # Evento manejado, continuar
+                
+            # Manejar sistema de deshacer
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_u and not notificador.activo:
+                    # Deshacer un movimiento (tecla U)
+                    undo_system.undo_last_move(player, gestor)
+                elif event.key == pygame.K_r and not notificador.activo:
+                    # Deshacer múltiples movimientos (tecla R + número)
+                    keys_pressed = pygame.key.get_pressed()
+                    undo_count = 1
+                    
+                    # Permitir deshacer más pasos con números
+                    if keys_pressed[pygame.K_1]: undo_count = 1
+                    elif keys_pressed[pygame.K_2]: undo_count = 2
+                    elif keys_pressed[pygame.K_3]: undo_count = 3
+                    elif keys_pressed[pygame.K_4]: undo_count = 4
+                    elif keys_pressed[pygame.K_5]: undo_count = 5
+                    
+                    undo_system.undo_n_moves(player, undo_count, gestor)
 
         # Obtener datos del clima (siempre disponibles para el HUD)
         condicion = sistema_clima.obtener_condicion()
@@ -293,6 +318,11 @@ def game():
                     )
                     moved = True
 
+            if moved:
+                # Guardar estado después de un movimiento exitoso
+                pedidos_activos_ids = [p.id for p in gestor.ver_pedidos()]
+                undo_system.save_state(player, tiempo_actual_segundos, pedidos_activos_ids)
+                
             if not moved:
                 # Solo recuperar resistencia cuando no esté pausado
                 if not juego_pausado:
@@ -338,7 +368,9 @@ def game():
             f"Resistencia: {player.stats.resistencia:.1f} | Estado: {player.stats.estado_actual()}",
             f"Reputacion: {player.reputation.valor} | Clima: {condicion}",
             f"Pedidos activos: {len(gestor)} | Pendientes: {notificador.obtener_pedidos_pendientes_count()}",
-            f"Estado: {'PAUSADO' if juego_pausado else 'ACTIVO'} | Notif: {'SI' if notificador.activo else 'NO'}"
+            f"Estado: {'PAUSADO' if juego_pausado else 'ACTIVO'} | Notif: {'SI' if notificador.activo else 'NO'}",
+            f"Undo: {undo_system.get_undo_count()} pasos disponibles", 
+            "U=volver | (1-5)+R = volver N pasos"
         ]
 
         urgentes = gestor.ordenar_por_prioridad()
@@ -376,9 +408,8 @@ def game():
     
 def main_menu():
     pygame.display.set_caption("Courier Quest - Menú Principal")
-    # Agregar al inicio de game() después de crear BASE_DIR
     api = ManejadorAPI(cache_dir=CACHE_DIR)
-    api.update_data()  # Actualiza TODO (clima, mapa, pedidos)
+    api.update_data()
     while True:
         SCREEN.blit(BG, (0, 0))
 
@@ -426,8 +457,7 @@ def main_menu():
         
 def pause(player, stats, rep, gestor, original_caption):
     pygame.display.set_caption("Courier Quest - Pausa")
-    api = ManejadorAPI(cache_dir=CACHE_DIR)
-    api.update_data()
+
 
     while True:
         SCREEN.blit(BG, (0, 0))
