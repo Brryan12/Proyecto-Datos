@@ -10,6 +10,7 @@ from src.game.package_notifier import NotificadorPedidos
 from src.api.ManejadorAPI import ManejadorAPI
 from src.game.events import Events
 from src.game.save import Save
+from src.game.inventory import InventarioPedidos  # Importar InventarioPedidos
 
 # Intento de import seguro de ServicioPedidos (soporta dos ubicaciones comunes)
 try:
@@ -144,6 +145,9 @@ def game():
         print("No hay pedidos en cache.")
         
 
+    # --- Inicializar inventario ---
+    inventario = InventarioPedidos(max_weight=10, screen_width=WINDOW_WIDTH, screen_height=WINDOW_HEIGHT)
+
     # --- loop principal ---
     running = True
     tiempo_inicio = pygame.time.get_ticks()
@@ -185,9 +189,8 @@ def game():
         print(player.current_tile_info)
         
         # Procesar eventos
-
-        event = Events(player, gestor, notificador, undo_system)
-        accion = event.procesar_eventos()
+        event_handler = Events(player, gestor, notificador, undo_system, inventario)
+        accion = event_handler.procesar_eventos()
 
         if accion == "salir":
             print("Saliendo del juego.")
@@ -240,9 +243,13 @@ def game():
                     # Obtener factor de clima desde sistema_clima
                     clima_factor = efectos["factor_velocidad"]
                     
+                    # Calcular peso del inventario
+                    peso_inventario = gestor.inventory.current_weight()
+                    
                     # Mover al jugador con todos los factores
                     player.mover(
                         direccion="up", 
+                        peso_total=peso_inventario,
                         clima=condicion, 
                         clima_factor=clima_factor,
                         tile_info=tile_info,
@@ -253,8 +260,10 @@ def game():
                 if not map_logic.is_blocked(new_x, new_y):
                     tile_info = map_logic.get_tile_info(new_x, new_y)
                     clima_factor = efectos["factor_velocidad"]
+                    peso_inventario = gestor.inventory.current_weight()
                     player.mover(
                         direccion="down", 
+                        peso_total=peso_inventario,
                         clima=condicion, 
                         clima_factor=clima_factor,
                         tile_info=tile_info,
@@ -265,8 +274,10 @@ def game():
                 if not map_logic.is_blocked(new_x, new_y):
                     tile_info = map_logic.get_tile_info(new_x, new_y)
                     clima_factor = efectos["factor_velocidad"]
+                    peso_inventario = gestor.inventory.current_weight()
                     player.mover(
                         direccion="izq", 
+                        peso_total=peso_inventario,
                         clima=condicion, 
                         clima_factor=clima_factor,
                         tile_info=tile_info,
@@ -277,8 +288,10 @@ def game():
                 if not map_logic.is_blocked(new_x, new_y):
                     tile_info = map_logic.get_tile_info(new_x, new_y)
                     clima_factor = efectos["factor_velocidad"]
+                    peso_inventario = gestor.inventory.current_weight()
                     player.mover(
                         direccion="der", 
+                        peso_total=peso_inventario,
                         clima=condicion, 
                         clima_factor=clima_factor,
                         tile_info=tile_info,
@@ -368,8 +381,12 @@ def game():
                 
             if not paused:  # Si pause() retorna False, significa que queremos salir al menú principal
                 return
-        pygame.display.flip()
 
+        # Dibujar el inventario si está activo
+        inventario.dibujar_inventario(SCREEN)
+        
+        # Actualizar la pantalla
+        pygame.display.update()
 
     # Incrementar día y guardar
     current_day = save_data.day + 1 
