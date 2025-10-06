@@ -52,6 +52,11 @@ class Events:
                 if event.key == pygame.K_i and self.inventario:
                     self.inventario.toggle_inventario()
 
+                # Cambiar modo de ordenamiento del inventario (tecla K)
+                elif event.key == pygame.K_k and self.inventario:
+                    self.inventario.toggle_sort_mode()
+                    print(f"Inventario ordenado por: {self.inventario.get_current_sort_name()}")
+
                 # Deshacer un movimiento (tecla U)
                 elif event.key == pygame.K_u and not self.notificador.activo:
                     self.undo_system.undo_last_move(self.player, self.gestor)
@@ -176,7 +181,10 @@ class Events:
             clima_factor = efectos["factor_velocidad"]
             
             # Calcular peso del inventario
-            peso_inventario = self.gestor.inventory.current_weight()
+            peso_inventario = 0.0
+            if self.inventario:
+                pedidos_en_inventario = self.inventario.get_orders()
+                peso_inventario = sum(pedido.weight for pedido in pedidos_en_inventario)
             
             # Mover al jugador con todos los factores
             self.player.mover(
