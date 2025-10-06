@@ -30,6 +30,8 @@ Se deben correr estos comandos en consola:
 - pip install pydantic
 - pip install pygame
 
+Las estructuras de datos aplicadas fueron las siguientes:
+En términos generales, se usan los dict y list que aplican de forma predeterminada por Python. En estos casos, almacena las relaciones clave-valor, las cuales han servido para almacenar las estadísticas, los estados de clima, el mapa y otros elementos. Todas sus operaciones utilizan una complejidad algorítmica en el mejor de los casos de O(1) y en el peor de O(n), tanto para insertar, buscar, eliminar y actualizar. Para el caso de los list, se aplica principalmente para la carga del API (mapa, pedidos y clima). Estos poseen una complejidad algorítmica similar, al ser 0(1) en el mejor de los casos (a excepción de búsqueda, que es O(n)), y O(n) en el peor de los casos (los accesos modificaciones son O(1)). Esto ocurre porque el tamaño de los datos no es tan grande. Además, las operaciones de acceso (que son las más aplicadas en el programa) funciona de forma rápida al ser el propósito de estas dos estructuras en python.
 
 
 
