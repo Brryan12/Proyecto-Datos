@@ -47,8 +47,6 @@ class UndoSystem:
         
         if len(self.states_stack) > self.max_undo_steps:
             self.states_stack.pop(0)
-            
-        print(f"Undo: Estado guardado en ({tile_x}, {tile_y}) - Stack size: {len(self.states_stack)}")
     
     def undo_last_move(self, player, gestor_pedidos=None) -> Optional[GameState]:
         if not self.can_undo():
@@ -70,8 +68,6 @@ class UndoSystem:
         player.reputation.valor = previous_state.reputacion
         player.peso_total = previous_state.peso_total
         
-        print(f"Undo: Restaurado a posición ({previous_state.player_tile_x}, {previous_state.player_tile_y}) - Stack size: {len(self.states_stack)}")
-        
         return previous_state
     
     def undo_n_moves(self, player, n: int, gestor_pedidos=None) -> Optional[GameState]:
@@ -87,10 +83,7 @@ class UndoSystem:
             last_state = self.undo_last_move(player, gestor_pedidos)
             undone_count += 1
         
-        if undone_count > 0:
-            print(f"Undo: Deshecho {undone_count} de {n} movimientos solicitados")
-        else:
-            print("Undo: No se pudo deshacer ningún movimiento")
+        # Operación completada silenciosamente
             
         return last_state
     
