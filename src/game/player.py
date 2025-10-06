@@ -3,20 +3,38 @@ from pathlib import Path
 from typing import Optional
 from src.game.stats_module import Stats
 from src.game.reputation import Reputation
+from src.game.save import Save
 
 
 class Player(pygame.sprite.Sprite):
 
 
-    def __init__(self, sprites_dir: Path, stats: Stats, reputation: Reputation, tile_width: int, tile_height: int, start_x: int = 0, start_y: int = 0):
+    def __init__(self, sprites_dir: Path, stats: Stats, reputation: Reputation, tile_width: int, tile_height: int, start_x: int = 0, start_y: int = 0, save_data: Save = None):
         super().__init__()
 
         # --- Estado base ---
         self.x = start_x
         self.y = start_y
 
+        # --- Cargar progreso guardado si existe ---
+        if save_data: 
+            try: 
+                x, y = save_data.position 
+                self.x = int(float(x)) 
+                self.y = int(float(y)) 
+            except Exception: 
+                print(f"[WARN] Posición inválida en guardado: {save_data.position}, usando (0,0)") 
+                self.x, self.y = 0, 0 
+        else: 
+            self.x, self.y = int(start_x), int(start_y)
+
         self.stats = stats
         self.reputation = reputation
+
+        # Si viene un guardado, sincronizamos reputación y score 
+        if save_data: 
+            self.reputation.valor = save_data.reputation 
+            self.stats.score = save_data.score if hasattr(self.stats, "score") else 0
 
         # dirección inicial
         self.direccion = "down"
@@ -172,3 +190,24 @@ class Player(pygame.sprite.Sprite):
 
     def nuevo_dia(self):
         self.reputation.reset_diario()
+    
+    def exportar_estado(self) -> Save: 
+        """Convierte el estado actual del jugador en un Save listo para guardar.""" 
+        data = Save( 
+            position=(self.x, self.y), 
+            score=getattr(self.stats, "score", 0), 
+            reputation=self.reputation.valor 
+        ) 
+        return data
+
+    def exportar_estado(self, player_name, day, city_name=None, score=None, reputation=None, position=None, current_weather=None):
+        return Save(
+        player_name=player_name,
+        day=day,
+        city_name=city_name if city_name is not None else "TigerCity",
+        score=score if score is not None else 0,
+        reputation=reputation if reputation is not None else self.reputation.valor,
+        position=position if position is not None else (int(self.x), int(self.y)),
+        completed_jobs=[],
+        current_weather=current_weather
+    )
