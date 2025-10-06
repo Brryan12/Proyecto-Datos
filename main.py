@@ -44,6 +44,222 @@ SPRITES_DIR = BASE_DIR / "sprites"
 def get_font(size): # Returns Press-Start-2P in the desired size
     return pygame.font.Font("./sprites/font.ttf", size)
 
+def get_player_name():
+    """Pantalla para ingresar el nombre del jugador"""
+    pygame.display.set_caption("Courier Quest - Ingresa tu nombre")
+    
+    name = ""
+    max_length = 15
+    input_active = True
+    cursor_visible = True
+    cursor_timer = 0
+    
+    while input_active:
+        dt = pygame.time.Clock().tick(60)
+        cursor_timer += dt
+        
+        # Alternar cursor cada 500ms
+        if cursor_timer >= 500:
+            cursor_visible = not cursor_visible
+            cursor_timer = 0
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN and name.strip():
+                    input_active = False
+                elif event.key == pygame.K_BACKSPACE:
+                    name = name[:-1]
+                elif event.key == pygame.K_ESCAPE:
+                    return None  # Cancelar y volver al menú
+                else:
+                    # Agregar carácter si hay espacio y es válido
+                    if len(name) < max_length and event.unicode.isprintable():
+                        name += event.unicode
+        
+        # Dibujar pantalla
+        SCREEN.blit(BG, (0, 0))
+        
+        # Título
+        title_font = get_font(32)
+        title_text = title_font.render("INGRESA TU NOMBRE", True, (255, 255, 255))
+        title_rect = title_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 100))
+        SCREEN.blit(title_text, title_rect)
+        
+        # Campo de entrada
+        input_font = get_font(24)
+        input_width = 400
+        input_height = 50
+        input_rect = pygame.Rect((WINDOW_WIDTH - input_width) // 2, WINDOW_HEIGHT // 2 - 25, input_width, input_height)
+        
+        # Fondo del campo
+        pygame.draw.rect(SCREEN, (255, 255, 255), input_rect)
+        pygame.draw.rect(SCREEN, (0, 0, 0), input_rect, 3)
+        
+        # Texto ingresado
+        display_text = name
+        if cursor_visible:
+            display_text += "|"
+        
+        text_surface = input_font.render(display_text, True, (0, 0, 0))
+        text_rect = text_surface.get_rect(center=input_rect.center)
+        SCREEN.blit(text_surface, text_rect)
+        
+        # Instrucciones
+        instruction_font = get_font(16)
+        instruction_text = instruction_font.render("Presiona ENTER para continuar o ESC para cancelar", True, (255, 255, 255))
+        instruction_rect = instruction_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 80))
+        SCREEN.blit(instruction_text, instruction_rect)
+        
+        pygame.display.update()
+    
+    return name.strip()
+
+def select_save_file():
+    """Pantalla para seleccionar una partida guardada"""
+    pygame.display.set_caption("Courier Quest - Seleccionar Partida")
+    
+    # Buscar todos los archivos de guardado en el directorio cache
+    save_files = []
+    cache_dir = Path("cache")
+    
+    if cache_dir.exists():
+        for file in cache_dir.glob("*.json"):
+            if file.name.startswith("save") or file.name == "save.json":
+                try:
+                    with open(file, "r", encoding="utf-8") as f:
+                        save_data = json.load(f)
+                    # Extraer información relevante
+                    save_info = {
+                        'file': file,
+                        'player_name': save_data.get('player_name', 'Sin nombre'),
+                        'day': save_data.get('day', 1),
+                        'reputation': save_data.get('reputation', 0),
+                        'city': save_data.get('city_name', 'TigerCity')
+                    }
+                    save_files.append(save_info)
+                except Exception as e:
+                    print(f"Error leyendo {file}: {e}")
+    
+    if not save_files:
+        # No hay partidas guardadas, mostrar mensaje
+        show_no_saves_message()
+        return None
+    
+    selected_index = 0
+    scroll_offset = 0
+    max_visible = 5
+    
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    selected_index = max(0, selected_index - 1)
+                    if selected_index < scroll_offset:
+                        scroll_offset = selected_index
+                elif event.key == pygame.K_DOWN:
+                    selected_index = min(len(save_files) - 1, selected_index + 1)
+                    if selected_index >= scroll_offset + max_visible:
+                        scroll_offset = selected_index - max_visible + 1
+                elif event.key == pygame.K_RETURN:
+                    return save_files[selected_index]['file']
+                elif event.key == pygame.K_ESCAPE:
+                    return None
+        
+        # Dibujar pantalla
+        SCREEN.blit(BG, (0, 0))
+        
+        # Título
+        title_font = get_font(24)
+        title_text = title_font.render("SELECCIONAR PARTIDA GUARDADA", True, (255, 255, 255))
+        title_rect = title_text.get_rect(center=(WINDOW_WIDTH // 2, 50))
+        SCREEN.blit(title_text, title_rect)
+        
+        # Lista de partidas
+        list_font = get_font(16)
+        y_start = 120
+        
+        for i in range(max_visible):
+            file_index = scroll_offset + i
+            if file_index >= len(save_files):
+                break
+                
+            save_info = save_files[file_index]
+            
+            # Color de fondo para la selección actual
+            if file_index == selected_index:
+                rect = pygame.Rect(30, y_start + i * 60 - 10, WINDOW_WIDTH - 60, 70)
+                pygame.draw.rect(SCREEN, (120, 120, 120), rect)
+                pygame.draw.rect(SCREEN, (255, 255, 255), rect, 3)
+            
+            # Información de la partida
+            name_text = list_font.render(f"Jugador: {save_info['player_name']}", True, (255, 255, 255))
+            day_text = list_font.render(f"Día: {save_info['day']} | Rep: {save_info['reputation']}", True, (200, 200, 200))
+            city_text = list_font.render(f"Ciudad: {save_info['city']}", True, (180, 180, 180))
+            
+            SCREEN.blit(name_text, (60, y_start + i * 60))
+            SCREEN.blit(day_text, (60, y_start + i * 60 + 18))
+            SCREEN.blit(city_text, (60, y_start + i * 60 + 36))
+        
+        # Indicadores de scroll
+        if scroll_offset > 0:
+            up_arrow = list_font.render("↑ Más arriba", True, (255, 255, 255))
+            SCREEN.blit(up_arrow, (WINDOW_WIDTH // 2 - 50, 100))
+        
+        if scroll_offset + max_visible < len(save_files):
+            down_arrow = list_font.render("↓ Más abajo", True, (255, 255, 255))
+            SCREEN.blit(down_arrow, (WINDOW_WIDTH // 2 - 50, y_start + max_visible * 60))
+        
+        # Instrucciones
+        instruction_font = get_font(12)
+        instructions = [
+            "↑↓ Navegar | ENTER Seleccionar | ESC Cancelar"
+        ]
+        
+        for i, instruction in enumerate(instructions):
+            text = instruction_font.render(instruction, True, (255, 255, 255))
+            text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 50 + i * 20))
+            SCREEN.blit(text, text_rect)
+        
+        pygame.display.update()
+
+def show_no_saves_message():
+    """Mostrar mensaje cuando no hay partidas guardadas"""
+    clock = pygame.time.Clock()
+    show_time = 0
+    
+    while show_time < 2000:  # Mostrar por 2 segundos
+        dt = clock.tick(60)
+        show_time += dt
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                return  # Salir al presionar cualquier tecla
+        
+        SCREEN.blit(BG, (0, 0))
+        
+        # Mensaje
+        font = get_font(20)
+        message = font.render("NO HAY PARTIDAS GUARDADAS", True, (255, 255, 255))
+        message_rect = message.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 20))
+        SCREEN.blit(message, message_rect)
+        
+        sub_message = get_font(14).render("Presiona cualquier tecla para volver", True, (200, 200, 200))
+        sub_rect = sub_message.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 20))
+        SCREEN.blit(sub_message, sub_rect)
+        
+        pygame.display.update()
+
 MAP_WIDTH = 605
 MAP_HEIGHT = 605
 HUD_WIDTH = 300
@@ -53,8 +269,43 @@ SCREEN = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 
 save = Save.load_from_file()
 
-def game():
+def game(new_game=False, save_file=None):
+    global save
     print("Iniciando Courier Quest...")
+    
+    # Si es nueva partida, siempre preguntar el nombre
+    if new_game:
+        player_name = get_player_name()
+        if player_name is None:  # Usuario canceló
+            return  # Volver al menú principal
+        # Para nueva partida, no usar save data existente
+        save_data_to_use = None
+    else:
+        # Continuar partida: cargar desde archivo específico si se proporciona
+        if save_file:
+            try:
+                with open(save_file, "r", encoding="utf-8") as f:
+                    save_data = json.load(f)
+                from src.game.save import Save
+                save_data_to_use = Save(**save_data)
+                save = save_data_to_use  # Actualizar save global
+                player_name = save_data_to_use.player_name
+                print(f"Partida cargada: {player_name}, Día {save_data_to_use.day}")
+            except Exception as e:
+                print(f"Error cargando partida: {e}")
+                return
+        else:
+            # Usar save existente (comportamiento anterior)
+            saved_name = getattr(save, 'player_name', None) if save else None
+            if not saved_name or saved_name.strip() == "":
+                # Si no hay nombre guardado, preguntar
+                player_name = get_player_name()
+                if player_name is None:  # Usuario canceló
+                    return  # Volver al menú principal
+            else:
+                player_name = saved_name
+            save_data_to_use = save
+    
     TILE_WIDTH = 20
     TILE_HEIGHT = 20
 
@@ -122,7 +373,9 @@ def game():
     
     player = Player(SPRITES_DIR, stats, rep, TILE_WIDTH, TILE_HEIGHT, 
                     start_x=start_x, 
-                    start_y=start_y)
+                    start_y=start_y,
+                    save_data=save_data_to_use,
+                    player_name=player_name)
 
     # --- Inicializar sistema de deshacer ---
     undo_system = UndoSystem(10000)  # Permite deshacer hasta 50 movimientos
@@ -345,6 +598,7 @@ def game():
         
         hud_lines = [
             f"Tiempo: {tiempo_actual_segundos}s | Restante: {minutos:02d}:{segundos:02d}",
+            f"Jugador: {player.name}",
             f"Resistencia: {player.stats.resistencia:.1f} | Estado: {player.stats.estado_actual()}",
             f"Reputacion: {player.reputation.valor} | Clima: {condicion}",
             f"Pedidos activos: {len(gestor)} | Pendientes: {notificador.obtener_pedidos_pendientes_count()}",
@@ -389,9 +643,9 @@ def game():
         pygame.display.update()
 
     # Incrementar día y guardar
-    current_day = save_data.day + 1 
+    current_day = (save_data_to_use.day if save_data_to_use else 0) + 1 
     new_save = player.exportar_estado( 
-        player_name=save_data.player_name,
+        player_name=player.name,
         day=current_day,
         #score=
         #reputation=
@@ -399,7 +653,7 @@ def game():
         #current_weather=  
         ) 
     game_id = new_save.save_to_file() # se genera ID único automáticamente 
-    save_data = new_save # actualizar referencia para siguiente tick
+    save = new_save # actualizar referencia para siguiente tick
     
 def main_menu():
     pygame.display.set_caption("Courier Quest - Menú Principal")
@@ -421,16 +675,18 @@ def main_menu():
         MENU_TEXT = get_font(title_font_size).render("COURIER QUEST", True, "#b68f40")
         MENU_RECT = MENU_TEXT.get_rect(center=(center_x, center_y - 200))
 
-        PLAY_BUTTON = Button(None, pos=(center_x, center_y - 100), 
-                            text_input="PLAY", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
-        SCORE_BUTTON = Button(None, pos=(center_x, center_y + 20), 
+        NEW_GAME_BUTTON = Button(None, pos=(center_x, center_y - 100), 
+                            text_input="NEW GAME", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
+        CONTINUE_BUTTON = Button(None, pos=(center_x, center_y - 20), 
+                            text_input="CONTINUE", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
+        SCORE_BUTTON = Button(None, pos=(center_x, center_y + 60), 
                             text_input="SCORE BOARD", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
         QUIT_BUTTON = Button(None, pos=(center_x, center_y + 140), 
                             text_input="QUIT", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
 
         SCREEN.blit(MENU_TEXT, MENU_RECT)
 
-        for button in [PLAY_BUTTON, SCORE_BUTTON, QUIT_BUTTON]:
+        for button in [NEW_GAME_BUTTON, CONTINUE_BUTTON, SCORE_BUTTON, QUIT_BUTTON]:
             button.changeColor(MENU_MOUSE_POS)
             button.update(SCREEN)
         
@@ -439,8 +695,12 @@ def main_menu():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if PLAY_BUTTON.checkForInput(MENU_MOUSE_POS):
-                    game()
+                if NEW_GAME_BUTTON.checkForInput(MENU_MOUSE_POS):
+                    game(new_game=True)
+                if CONTINUE_BUTTON.checkForInput(MENU_MOUSE_POS):
+                    selected_save = select_save_file()
+                    if selected_save:  # Usuario seleccionó una partida
+                        game(new_game=False, save_file=selected_save)
                 if SCORE_BUTTON.checkForInput(MENU_MOUSE_POS):
                     # options() # Función no implementada aún
                     pass

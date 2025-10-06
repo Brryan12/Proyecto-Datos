@@ -9,12 +9,13 @@ from src.game.save import Save
 class Player(pygame.sprite.Sprite):
 
 
-    def __init__(self, sprites_dir: Path, stats: Stats, reputation: Reputation, tile_width: int, tile_height: int, start_x: int = 0, start_y: int = 0, save_data: Save = None):
+    def __init__(self, sprites_dir: Path, stats: Stats, reputation: Reputation, tile_width: int, tile_height: int, start_x: int = 0, start_y: int = 0, save_data: Save = None, player_name: str = None):
         super().__init__()
 
         # --- Estado base ---
         self.x = start_x
         self.y = start_y
+        self.name = player_name if player_name else "Sin Nombre"
 
         # --- Cargar progreso guardado si existe ---
         if save_data: 
@@ -35,6 +36,8 @@ class Player(pygame.sprite.Sprite):
         if save_data: 
             self.reputation.valor = save_data.reputation 
             self.stats.score = save_data.score if hasattr(self.stats, "score") else 0
+            if hasattr(save_data, 'player_name') and save_data.player_name:
+                self.name = save_data.player_name
 
         # dirección inicial
         self.direccion = "down"
@@ -169,7 +172,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = (center_x, center_y)
 
         # Consumir resistencia por movimiento
-        self.stats.consume_por_mover(celdas=1, peso_total=self.peso_total, condicion_clima=clima)
+        #self.stats.consume_por_mover(celdas=1, peso_total=self.peso_total, condicion_clima=clima)
 
         self.image = self.sprites[self.direccion]
 
