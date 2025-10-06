@@ -737,8 +737,7 @@ def main_menu():
                     if selected_save:  # Usuario seleccionó una partida
                         game(new_game=False, save_file=selected_save)
                 if SCORE_BUTTON.checkForInput(MENU_MOUSE_POS):
-                    # options() # Función no implementada aún
-                    pass
+                    show_scoreboard()
                 if QUIT_BUTTON.checkForInput(MENU_MOUSE_POS):
                     pygame.quit()
                     sys.exit()
@@ -812,7 +811,6 @@ def pause(player, stats, rep, gestor, original_caption, game_state_data=None):
                                 day=game_state_data.get('day', 1)
                             )
                             save_id = game_state_manager.save_game_state(game_state)
-
                         else:
                             # Fallback al método anterior (limitado)
                             save_data = player.exportar_estado(
@@ -820,7 +818,9 @@ def pause(player, stats, rep, gestor, original_caption, game_state_data=None):
                                 day=1,  # aquí puedes usar el día actual
                                 current_weather="clear"
                             )
-                            save_id = save_data.save_to_file()
+                            save_id = Save.save_score_only_global()
+
+                        save_score = save
 
                     except Exception as e:
                         print(f"Error al guardar: {e}")
@@ -832,6 +832,52 @@ def pause(player, stats, rep, gestor, original_caption, game_state_data=None):
                     sys.exit()
 
         pygame.display.update()
+
+def show_scoreboard():
+    pygame.display.set_caption("Courier Quest - Score Board")
+    clock = pygame.time.Clock()
+    running = True
+
+    # Cargar ranking
+    ranking = Save.get_ranking(top_n=10)
+
+    while running:
+        dt = clock.tick(60)
+        SCREEN.blit(BG, (0, 0))
+
+        # Mostrar título
+        title_font = get_font(36)
+        title_text = title_font.render("SCORE BOARD", True, (255, 215, 0))
+        title_rect = title_text.get_rect(center=(WINDOW_WIDTH // 2, 50))
+        SCREEN.blit(title_text, title_rect)
+
+        # Mostrar lista de jugadores y scores
+        list_font = get_font(24)
+        y_start = 120
+        for i, (nombre, score) in enumerate(ranking, start=1):
+            line_text = list_font.render(f"{i}. {nombre}: {score}", True, (255, 255, 255))
+            SCREEN.blit(line_text, (WINDOW_WIDTH // 2 - 100, y_start + i * 30))
+
+        # Botón de regreso
+        mouse_pos = pygame.mouse.get_pos()
+        back_button = Button(None, pos=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 80),
+                             text_input="BACK", font=get_font(24), base_color="#d7fcd4", hovering_color="White")
+        back_button.changeColor(mouse_pos)
+        back_button.update(SCREEN)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if back_button.checkForInput(mouse_pos):
+                    running = False
+
+        pygame.display.update()
+
 
 
 if __name__ == "__main__":

@@ -7,6 +7,8 @@ import uuid # Para generar IDs únicos
 SAVE_DIR = Path(__file__).resolve().parent / "saves" 
 SAVE_FILE = SAVE_DIR / "save.json" 
 
+SAVE_SCORES = SAVE_DIR / "saveScores.json"
+
 class Save(BaseModel): 
     player_name: Optional[str] = None 
     city_name: str = "TigerCity" 
@@ -35,7 +37,7 @@ class Save(BaseModel):
         for f in SAVE_DIR.glob("*.json"):
             try:
                 if f.stat().st_size == 0:
-                    print(f"[WARN] {f} está vacío, se ignorará")
+                    print(f"[WARNING] {f} está vacío, se ignorará")
                     continue
                 with open(f, "r", encoding="utf-8") as file:
                     data = json.load(file)
@@ -43,3 +45,50 @@ class Save(BaseModel):
             except (json.JSONDecodeError, FileNotFoundError) as e:
                 print(f"[WARNING] No se pudo cargar {f}: {e}")
         return saves
+    
+    @classmethod
+    def save_score_only_global(self):
+        """Guarda o actualiza el score del jugador en savedScores.json"""
+        self.SAVE_SCORES.mkdir(exist_ok=True)
+        
+        # Cargar scores existentes
+        scores = {}
+        if self.SAVE_SCORES.exists():
+            try:
+                with open(self.SAVE_SCORES, "r", encoding="utf-8") as f:
+                    scores = json.load(f)
+            except json.JSONDecodeError:
+                scores = {}
+        
+        # Actualizar o agregar el score del jugador
+        if self.player_name:
+            scores[self.player_name] = self.score
+        
+        # Guardar nuevamente
+        with open(self.SAVE_SCORES, "w", encoding="utf-8") as f:
+            json.dump(scores, f, indent=4, ensure_ascii=False)
+        
+        return str(self.SAVE_SCORES)
+    
+    @classmethod
+    def get_ranking(cls, top_n: int = 10) -> list[tuple[str, int]]:
+        """Devuelve un ranking de jugadores ordenado por score descendente.
+        
+        Args:
+            top_n: número máximo de jugadores a mostrar.
+        
+        Returns:
+            Lista de tuplas (nombre, score) ordenadas de mayor a menor score.
+        """
+        if not cls.SAVE_SCORES.exists():
+            return []
+
+        try:
+            with open(cls.SAVE_SCORE, "r", encoding="utf-8") as f:
+                scores = json.load(f)
+        except json.JSONDecodeError:
+            return []
+
+        # Ordenar por score descendente
+        sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        return sorted_scores[:top_n]
