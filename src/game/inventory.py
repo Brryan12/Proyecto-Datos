@@ -11,6 +11,15 @@ class InventarioPedidos:
         self.screen_width = screen_width
         self.screen_height = screen_height
         
+        # Modos de ordenamiento del inventario
+        self.modos_ordenamiento = ["normal", "prioridad", "tiempo_entrega"]
+        self.modo_actual = 0  # Índice del modo actual
+        self.nombres_modos = {
+            "normal": "Normal",
+            "prioridad": "Por Prioridad", 
+            "tiempo_entrega": "Por Tiempo de Entrega"
+        }
+        
     def current_weight(self) -> int: 
         return sum(p.weight for p in self.pedidos) # Verifica que aún puede aceptar el pedido por el peso 
     
@@ -19,7 +28,9 @@ class InventarioPedidos:
 
     def accept_order(self, pedido: PedidoSolicitud) -> bool: 
         if self.can_accept(pedido): 
-            self.pedidos.append(pedido) 
+            self.pedidos.append(pedido)
+            # Aplicar ordenamiento actual después de agregar
+            self.apply_current_sort()
             return True 
         return False 
     
@@ -48,7 +59,34 @@ class InventarioPedidos:
         self.pedidos.sort(key=lambda p: p.priority, reverse=True) 
         
     def arrange_by_time(self): 
-        self.pedidos.sort(key=lambda p: p.release_time) 
+        self.pedidos.sort(key=lambda p: p.release_time)
+        
+    def arrange_by_delivery_time(self):
+        """Ordena por tiempo de entrega (release_time + duration)"""
+        self.pedidos.sort(key=lambda p: p.release_time + p.duration)
+    
+    def toggle_sort_mode(self):
+        """Cambia el modo de ordenamiento y aplica el nuevo orden"""
+        self.modo_actual = (self.modo_actual + 1) % len(self.modos_ordenamiento)
+        self.apply_current_sort()
+        
+    def apply_current_sort(self):
+        """Aplica el ordenamiento según el modo actual"""
+        modo = self.modos_ordenamiento[self.modo_actual]
+        
+        if modo == "prioridad":
+            self.arrange_by_priority()
+        elif modo == "tiempo_entrega":
+            self.arrange_by_delivery_time()
+        # "normal" no hace nada, mantiene el orden original
+        
+        # Resetear índice seleccionado
+        self.selected_index = 0
+    
+    def get_current_sort_name(self) -> str:
+        """Devuelve el nombre del modo de ordenamiento actual"""
+        modo = self.modos_ordenamiento[self.modo_actual]
+        return self.nombres_modos[modo] 
         
     def get_orders(self) -> List[PedidoSolicitud]: 
         return self.pedidos
@@ -83,6 +121,10 @@ class InventarioPedidos:
         
         texto_titulo = fuente_titulo.render("Inventario de Pedidos", True, (0, 0, 0))
         screen.blit(texto_titulo, (x + 10, y + 10))
+
+        # Mostrar modo de ordenamiento actual
+        modo_texto = fuente_texto.render(f"Orden: {self.get_current_sort_name()} (K para cambiar)", True, (0, 0, 100))
+        screen.blit(modo_texto, (x + 200, y + 12))
 
         # Mostrar peso actual
         peso_actual = self.current_weight()

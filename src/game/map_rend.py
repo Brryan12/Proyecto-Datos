@@ -109,34 +109,47 @@ class MapRenderer:
                     pygame.draw.rect(screen, color, rect)
                     pygame.draw.rect(screen, (50, 50, 50), rect, 1)
 
-    def draw_package_icons(self, screen: pygame.Surface, pedidos_activos) -> None:
-        """Dibuja íconos de paquetes en las posiciones de recogida y entrega."""
+    def draw_package_icons(self, screen: pygame.Surface, pedidos_activos, pedidos_recogidos=None, pedidos_entregados=None) -> None:
+        """Dibuja íconos de paquetes en las posiciones de recogida y entrega.
+        
+        Args:
+            pedidos_activos: Lista de todos los pedidos activos
+            pedidos_recogidos: Lista de pedidos que han sido recogidos (no mostrar pickup)
+            pedidos_entregados: Lista de pedidos que han sido entregados (no mostrar dropoff)
+        """
+        if pedidos_recogidos is None:
+            pedidos_recogidos = []
+        if pedidos_entregados is None:
+            pedidos_entregados = []
+            
         for pedido in pedidos_activos:
-            # Dibujar paquete en posición de recogida (pickup)
-            pickup_x, pickup_y = pedido.pickup
-            sx, sy = self.tile_to_screen(pickup_x, pickup_y)
+            # Dibujar paquete en posición de recogida (pickup) SOLO si NO ha sido recogido
+            if pedido not in pedidos_recogidos:
+                pickup_x, pickup_y = pedido.pickup
+                sx, sy = self.tile_to_screen(pickup_x, pickup_y)
+                
+                # Verificar que esté dentro del viewport
+                if self._is_tile_visible(pickup_x, pickup_y):
+                    package_sprite = self.sprites.get("package")
+                    if package_sprite:
+                        screen.blit(package_sprite, (sx, sy))
+                    else:
+                        pygame.draw.rect(screen, (255, 255, 0), (sx, sy, self.tile_width, self.tile_height))
+                        pygame.draw.rect(screen, (200, 200, 0), (sx, sy, self.tile_width, self.tile_height), 2)
             
-            # Verificar que esté dentro del viewport
-            if self._is_tile_visible(pickup_x, pickup_y):
-                package_sprite = self.sprites.get("package")
-                if package_sprite:
-                    screen.blit(package_sprite, (sx, sy))
-                else:
-                    pygame.draw.rect(screen, (255, 255, 0), (sx, sy, self.tile_width, self.tile_height))
-                    pygame.draw.rect(screen, (200, 200, 0), (sx, sy, self.tile_width, self.tile_height), 2)
-            
-            # Dibujar punto de entrega (dropoff)
-            dropoff_x, dropoff_y = pedido.dropoff
-            sx, sy = self.tile_to_screen(dropoff_x, dropoff_y)
-            
-            # Verificar que esté dentro del viewport
-            if self._is_tile_visible(dropoff_x, dropoff_y):
-                delivery_sprite = self.sprites.get("delivery_point")
-                if delivery_sprite:
-                    screen.blit(delivery_sprite, (sx, sy))
-                else:
-                    pygame.draw.rect(screen, (255, 100, 100), (sx, sy, self.tile_width, self.tile_height))
-                    pygame.draw.rect(screen, (200, 50, 50), (sx, sy, self.tile_width, self.tile_height), 2)
+            # Dibujar punto de entrega (dropoff) SOLO si ha sido recogido pero NO entregado
+            if pedido in pedidos_recogidos and pedido not in pedidos_entregados:
+                dropoff_x, dropoff_y = pedido.dropoff
+                sx, sy = self.tile_to_screen(dropoff_x, dropoff_y)
+                
+                # Verificar que esté dentro del viewport
+                if self._is_tile_visible(dropoff_x, dropoff_y):
+                    delivery_sprite = self.sprites.get("delivery_point")
+                    if delivery_sprite:
+                        screen.blit(delivery_sprite, (sx, sy))
+                    else:
+                        pygame.draw.rect(screen, (255, 100, 100), (sx, sy, self.tile_width, self.tile_height))
+                        pygame.draw.rect(screen, (200, 50, 50), (sx, sy, self.tile_width, self.tile_height), 2)
 
     def _is_tile_visible(self, tx: int, ty: int) -> bool:
         """Verifica si una casilla está visible en el viewport (elemento gráfico) actual."""

@@ -258,12 +258,108 @@ def es_adyacente(pos1, pos2):
     x2, y2 = pos2
     return (abs(x1 - x2) == 1 and y1 == y2) or (abs(y1 - y2) == 1 and x1 == x2)
 
+def mostrar_pantalla_victoria(player, tiempo_actual):
+    """Muestra la pantalla de victoria"""
+    pygame.display.set_caption("Courier Quest - ¡VICTORIA!")
+    
+    while True:
+        SCREEN.blit(BG, (0, 0))
+        
+        # Título de victoria
+        titulo_font = get_font(32)
+        titulo = titulo_font.render("¡VICTORIA!", True, (0, 255, 0))
+        titulo_rect = titulo.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 150))
+        SCREEN.blit(titulo, titulo_rect)
+        
+        # Estadísticas finales
+        stats_font = get_font(12)
+        score_total = player.score.calcular_total()
+        tiempo_minutos = tiempo_actual // 60
+        tiempo_segundos = tiempo_actual % 60
+        
+        stats_lines = [
+            f"Meta alcanzada: ${META_INGRESOS}",
+            f"Score final: ${score_total}",
+            f"Tiempo: {tiempo_minutos}:{tiempo_segundos:02d}",
+            f"Reputación: {player.reputation.valor}/100",
+            "",
+            "Presiona cualquier tecla para continuar"
+        ]
+        
+        for i, line in enumerate(stats_lines):
+            text = stats_font.render(line, True, (255, 255, 255))
+            text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 50 + i * 30))
+            SCREEN.blit(text, text_rect)
+        
+        # Manejar eventos
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                return  # Volver al menú principal
+        
+        pygame.display.update()
+
+def mostrar_pantalla_derrota(player, tiempo_actual, razon):
+    """Muestra la pantalla de derrota"""
+    pygame.display.set_caption("Courier Quest - Derrota")
+    
+    while True:
+        SCREEN.blit(BG, (0, 0))
+        
+        # Título de derrota
+        titulo_font = get_font(32)
+        titulo = titulo_font.render("DERROTA", True, (255, 0, 0))
+        titulo_rect = titulo.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 150))
+        SCREEN.blit(titulo, titulo_rect)
+        
+        # Razón de la derrota
+        razon_font = get_font(14)
+        razon_text = razon_font.render(razon, True, (255, 200, 200))
+        razon_rect = razon_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 100))
+        SCREEN.blit(razon_text, razon_rect)
+        
+        # Estadísticas finales
+        stats_font = get_font(12)
+        score_total = player.score.calcular_total()
+        tiempo_minutos = tiempo_actual // 60
+        tiempo_segundos = tiempo_actual % 60
+        
+        stats_lines = [
+            f"Score final: ${score_total}",
+            f"Meta: ${META_INGRESOS}",
+            f"Tiempo: {tiempo_minutos}:{tiempo_segundos:02d}",
+            f"Reputación: {player.reputation.valor}/100",
+            "",
+            "Presiona cualquier tecla para continuar"
+        ]
+        
+        for i, line in enumerate(stats_lines):
+            text = stats_font.render(line, True, (255, 255, 255))
+            text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 50 + i * 30))
+            SCREEN.blit(text, text_rect)
+        
+        # Manejar eventos
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                return  # Volver al menú principal
+        
+        pygame.display.update()
+
 MAP_WIDTH = 605
 MAP_HEIGHT = 605
 HUD_WIDTH = 300
 WINDOW_WIDTH = MAP_WIDTH + HUD_WIDTH
 WINDOW_HEIGHT = MAP_HEIGHT
 SCREEN = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+
+# Constantes del juego
+META_INGRESOS = 1000  # Meta de ganancias para victoria
+TIEMPO_TOTAL_JORNADA = 900  # 15 minutos de jornada
 
 save = Save.load_from_file()
 
@@ -428,14 +524,45 @@ def game(new_game=False, save_file=None):
         pedidos_en_inventario = inventario.get_orders()
         
         if pedido_a_entregar in pedidos_en_inventario:
+            # Calcular puntualidad de la entrega
+            tiempo_limite = pedido_a_entregar.release_time + pedido_a_entregar.duration
+            delay_seconds = tiempo_actual_segundos - tiempo_limite
+            
+            # Determinar el estado de la entrega
+            if delay_seconds <= -30:  # Entregado 30s antes o más
+                estado_entrega = "temprano"
+                print(f"¡Entrega temprana! +30s antes del límite")
+            elif delay_seconds <= 0:  # Entregado a tiempo
+                estado_entrega = "a_tiempo"  
+                print(f"Entrega a tiempo")
+            else:  # Entregado tarde
+                estado_entrega = "tarde"
+                print(f"Entrega tardía: {delay_seconds}s de retraso")
+            
+            # Registrar entrega en reputación
+            player.reputation.registrar_entrega(estado_entrega, max(0, delay_seconds))
+            
             # Remover del inventario
             inventario.reject_order(pedido_a_entregar)
-            # Agregar puntuación
-            player.score.agregar_ingreso(pedido_a_entregar.payout)
+            
+            # Agregar puntuación (con multiplicador de reputación si aplica)
+            ganado = player.score.agregar_ingreso(pedido_a_entregar.payout, player.reputation.valor)
+            
+            # Agregar bonos o penalizaciones según puntualidad
+            if estado_entrega == "temprano":
+                bono = pedido_a_entregar.payout * 0.1  # 10% de bono por entrega temprana
+                player.score.agregar_bono(bono, "Entrega temprana")
+                print(f"¡Bono por entrega temprana: +${bono:.0f}!")
+            elif estado_entrega == "tarde":
+                penalizacion = pedido_a_entregar.payout * 0.1  # 10% de penalización por retraso
+                player.score.agregar_penalizacion(penalizacion, f"Retraso de {delay_seconds}s")
+                print(f"Penalización por retraso: -${penalizacion:.0f}")
+            
             # Marcar como entregado para que el dropoff desaparezca
             if pedido_a_entregar not in pedidos_entregados:
                 pedidos_entregados.append(pedido_a_entregar)
-            print(f"Paquete {pedido_a_entregar.id} entregado exitosamente. Pago: ${pedido_a_entregar.payout}")
+            
+            print(f"Paquete {pedido_a_entregar.id} entregado. Pago: ${ganado:.0f} (Rep: {player.reputation.valor})")
         else:
             print(f"No tienes el paquete {pedido_a_entregar.id} en tu inventario")
 
@@ -492,23 +619,33 @@ def game(new_game=False, save_file=None):
         
         tiempo_actual_segundos = max(0, tiempo_actual_ms // 1000)
         
+        # VERIFICAR CONDICIONES DE VICTORIA Y DERROTA
+        if not juego_pausado:
+            # Condición de DERROTA por reputación
+            if player.reputation.valor < 20:
+                mostrar_pantalla_derrota("reputacion", tiempo_actual_segundos, player.score.calcular_total())
+                return
+            
+            # Condición de DERROTA por tiempo agotado
+            if tiempo_actual_segundos >= TIEMPO_TOTAL_JORNADA:
+                total_score = player.score.calcular_total()
+                if total_score >= META_INGRESOS:
+                    mostrar_pantalla_victoria(tiempo_actual_segundos, total_score, player.reputation.valor)
+                else:
+                    mostrar_pantalla_derrota("tiempo", tiempo_actual_segundos, total_score)
+                return
+            
+            # Condición de VICTORIA por meta alcanzada
+            total_score = player.score.calcular_total()
+            if total_score >= META_INGRESOS:
+                mostrar_pantalla_victoria(tiempo_actual_segundos, total_score, player.reputation.valor)
+                return
+        
         # ACTUALIZAR NOTIFICADOR - Solo cuando no esté pausado
         if not juego_pausado:
             notificador.actualizar(tiempo_actual_segundos)
         
-        # Dibujar casillas de pickup y dropoff
-        for pedido in pedidos:
-            # Dibujar pickup (verde) solo si no ha sido recogido
-            if pedido not in pedidos_recogidos:
-                px, py = pedido.pickup
-                pygame.draw.rect(SCREEN, (0, 200, 0), (px * 20, py * 20, 18, 18))
-        
-        # Dibujar dropoffs (rojo) solo para paquetes que están en el inventario
-        pedidos_en_inventario = inventario.get_orders()
-        for pedido in pedidos_en_inventario:
-            if pedido not in pedidos_entregados:
-                dx, dy = pedido.dropoff
-                pygame.draw.rect(SCREEN, (200, 0, 0), (dx * 20, dy * 20, 18, 18))
+        # Dibujo de paquetes y puntos de entrega ahora manejado por renderer.draw_package_icons()
 
 
 
@@ -582,9 +719,9 @@ def game(new_game=False, save_file=None):
         SCREEN.fill((0, 0, 0))
         renderer.draw(SCREEN)
         
-        # Dibujar paquetes y puntos de entrega para pedidos activos
+        # Dibujar paquetes y puntos de entrega para pedidos activos con lógica inteligente
         pedidos_activos = gestor.ver_pedidos()
-        renderer.draw_package_icons(SCREEN, pedidos_activos)
+        renderer.draw_package_icons(SCREEN, pedidos_activos, pedidos_recogidos, pedidos_entregados)
         
         # Dibujar cuadrícula de debug (opcional)
         # Si quieres ver los límites de las casillas, descomenta estas líneas:
@@ -604,21 +741,50 @@ def game(new_game=False, save_file=None):
         minutos = tiempo_restante_segundos // 60
         segundos = tiempo_restante_segundos % 60
         
+        # Calcular peso actual del inventario
+        pedidos_en_inventario = inventario.get_orders()
+        peso_actual = sum(pedido.weight for pedido in pedidos_en_inventario)
+        
+        # Calcular ingreso total para mostrar progreso hacia meta
+        total_actual = player.score.calcular_total()
+        progreso_meta = (total_actual / META_INGRESOS) * 100
+        
         hud_lines = [
             f"Tiempo: {tiempo_actual_segundos}s | Restante: {minutos:02d}:{segundos:02d}",
-            f"Jugador: {player.name} | Score: {player.score.calcular_total()}",
+            f"Jugador: {player.name} | Reputacion: {player.reputation.valor}",
             f"Resistencia: {player.stats.resistencia:.1f} | Estado: {player.stats.estado_actual()}",
-            f"Reputacion: {player.reputation.valor} | Clima: {condicion}",
+            f"Ingresos: ${total_actual:.0f} / ${META_INGRESOS} ({progreso_meta:.1f}%)",
+            f"Peso: {peso_actual:.1f}kg | Velocidad: {player.velocidad_actual:.1f}px/f",
+            f"Clima: {condicion}",
             f"Pedidos activos: {len(gestor)} | Pendientes: {notificador.obtener_pedidos_pendientes_count()}",
             f"Estado: {'PAUSADO' if juego_pausado else 'ACTIVO'} | Notif: {'SI' if notificador.activo else 'NO'}",
             f"Undo: {undo_system.get_undo_count()} pasos disponibles", 
-            "U=volver | (1-5)+R = volver N pasos"
+            "U=volver | (1-5)+R = volver N pasos",
+            "N=recoger paquete",
+            "M=entregar paquete",
+            "I=abrir inventario",
+            "K=ordenar inventario",
+            "", # Línea vacía para separación
+            "PEDIDOS:"
         ]
 
         urgentes = gestor.ordenar_por_prioridad()
-        for idx, pedido in enumerate(urgentes):
-            tiempo_restante_pedido = max(0, (pedido.release_time + pedido.duration) - tiempo_actual_segundos)
-            hud_lines.append(f"{idx+1}. {pedido.id} P:{pedido.priority} T:{tiempo_restante_pedido}s Peso:{pedido.weight}kg")
+        # Filtrar pedidos que ya fueron entregados del HUD
+        urgentes_no_entregados = [p for p in urgentes if p not in pedidos_entregados]
+        
+        if urgentes_no_entregados:
+            for idx, pedido in enumerate(urgentes_no_entregados):
+                tiempo_limite = pedido.release_time + pedido.duration
+                tiempo_restante = tiempo_limite - tiempo_actual_segundos
+                
+                if tiempo_restante > 0:
+                    tiempo_texto = f"{tiempo_restante}s"
+                else:
+                    tiempo_texto = "EXPIRADO"
+                    
+                hud_lines.append(f"{idx+1}. {pedido.id} P:{pedido.priority} T:{tiempo_texto} Peso:{pedido.weight}kg")
+        else:
+            hud_lines.append("  (No hay pedidos disponibles)")
 
         for i, line in enumerate(hud_lines):
             hud_surface = get_font(8).render(line, True, (255, 255, 255))

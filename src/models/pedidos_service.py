@@ -6,7 +6,7 @@ from src.api.ManejadorAPI import ManejadorAPI
 
 
 class ServicioPedidos:
-    def __init__(self, cache_dir: str = "cache", default_duration: int = 15 * 60):
+    def __init__(self, cache_dir: str = "cache", default_duration: int = 30):
 
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
