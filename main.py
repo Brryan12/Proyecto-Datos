@@ -122,13 +122,14 @@ def select_save_file():
     """Pantalla para seleccionar una partida guardada"""
     pygame.display.set_caption("Courier Quest - Seleccionar Partida")
     
-    # Buscar todos los archivos de guardado en el directorio cache
+    # Buscar todos los archivos de guardado en el directorio src/game/saves
     save_files = []
-    cache_dir = Path("cache")
+    saves_dir = Path("src/game/saves")
     
-    if cache_dir.exists():
-        for file in cache_dir.glob("*.json"):
-            if file.name.startswith("save") or file.name == "save.json":
+    if saves_dir.exists():
+        for file in saves_dir.glob("*.json"):
+            # Excluir el archivo savedScores.json que es solo para puntuaciones
+            if file.name != "savedScores.json":
                 try:
                     with open(file, "r", encoding="utf-8") as f:
                         save_data = json.load(f)
@@ -642,18 +643,15 @@ def game(new_game=False, save_file=None):
         # Actualizar la pantalla
         pygame.display.update()
 
-    # Incrementar día y guardar
-    current_day = (save_data_to_use.day if save_data_to_use else 0) + 1 
+# Incrementar día y guardar
+    current_day = save_data.day + 1 
     new_save = player.exportar_estado( 
-        player_name=player.name,
+        player_name=player_name,
         day=current_day,
-        #score=
-        #reputation=
-        position=(px,py),
-        #current_weather=  
+        current_weather=clima
         ) 
-    game_id = new_save.save_to_file() # se genera ID único automáticamente 
-    save = new_save # actualizar referencia para siguiente tick
+    game_id = new_save.save_to_file() # guarda y devuelve el ID único
+    save_data = new_save # actualizar referencia para siguiente tick
     
 def main_menu():
     pygame.display.set_caption("Courier Quest - Menú Principal")
@@ -755,7 +753,13 @@ def pause(player, stats, rep, gestor, original_caption):
                     return True  # Retorna True para continuar el juego
                 if SAVE_BUTTON.checkForInput(MENU_MOUSE_POS):
                     try:
-                        pass
+                        save_data = player.exportar_estado(
+                            player_name="Jugador", 
+                            day=1,  # aquí puedes usar el día actual
+                            current_weather="clear"
+                        )
+                        save_id = save_data.save_to_file()
+                        print(f"Guardado con ID {save_id}")
                     except Exception as e:
                         print(f"Error al guardar: {e}")
                     # Continuar en pausa después de guardar

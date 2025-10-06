@@ -205,7 +205,7 @@ class Player(pygame.sprite.Sprite):
 
     def exportar_estado(self, player_name, day, city_name=None, score=None, reputation=None, position=None, current_weather=None):
         return Save(
-        player_name=player_name if player_name else "Jugador",
+        player_name=player_name,
         day=day if day else 1,
         city_name=city_name if city_name is not None else "TigerCity",
         score=self.stats if score is not None else 0,

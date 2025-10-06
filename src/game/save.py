@@ -8,11 +8,11 @@ SAVE_DIR = Path(__file__).resolve().parent / "saves"
 SAVE_FILE = SAVE_DIR / "save.json" 
 
 class Save(BaseModel): 
-    player_name: str = "Jugador" 
+    player_name: Optional[str] = None 
     city_name: str = "TigerCity" 
-    day: int = 1 
-    score: int = 0 
-    reputation: float = 70.0 
+    day: Optional[int] = None 
+    score: Optional[int] = 0 
+    reputation: Optional[float] = 0.0 
     position: Tuple[int, int] = (0, 0) 
     completed_jobs: List[str] = [] 
     current_weather: Optional[str] = None 
