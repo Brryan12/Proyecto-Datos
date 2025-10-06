@@ -7,10 +7,10 @@ class CityMap(BaseModel): #Se construyen con el basemodel de pydantic
     city_name: str
     width: int
     height: int
-    goal: int
-    max_time: int
-    tiles: List[List[str]]
-    legend: Dict[str, TileInfo]
+    goal: int #Número de entregas del jugador
+    max_time: int #Tiempo para completar las entregas
+    tiles: List[List[str]] #Matriz del mapa
+    legend: Dict[str, TileInfo]  #Mapea con TileInfo
 
     def iterar_elementos(self) -> List[TileInfo]:
         objetos = []

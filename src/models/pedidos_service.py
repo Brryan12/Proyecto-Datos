@@ -18,7 +18,7 @@ class ServicioPedidos:
         jobs_file = self.cache_dir / "jobs.json"
 
         if force_update or not jobs_file.exists():
-            print("jobs.json no encontrado o actualización forzada. Descargando desde API...")
+            print("jobs.json no encontrado. Descargando desde API...")
             self.api.get_jobs(save=True)
 
         with open(jobs_file, "r", encoding="utf-8") as f:
@@ -31,12 +31,12 @@ class ServicioPedidos:
                 pickup=job.get("pickup"),
                 dropoff=job.get("dropoff"),
                 payout=job.get("payout"),
-                duration=self.default_duration,   # ⬅️ ignoramos deadline, siempre duración fija
+                duration=self.default_duration,   # ignoramos deadline, manteniendo una duración fija
                 weight=job.get("weight"),
                 priority=job.get("priority"),
                 release_time=job.get("release_time"),
             )
-            pedidos.append(pedido)
+            pedidos.append(pedido) #Se agregan los pedidos al cache
 
         return pedidos
 
