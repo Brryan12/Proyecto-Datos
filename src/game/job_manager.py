@@ -7,11 +7,15 @@ from src.game.inventory import InventarioPedidos
 class GestorPedidos:
     """Gestor de pedidos usando una cola FIFO y operaciones auxiliares."""
 
-    def __init__(self, max_inventory_weight: int = 50):
+    def __init__(self, max_inventory_weight: int = 50, screen_width: int = 800, screen_height: int = 600):
         # Cola de pedidos activos (FIFO)
         self.cola_pedidos: deque[PedidoSolicitud] = deque()
         self.available_orders: List[PedidoSolicitud] = [] #Pedidos disponibles
-        self.inventory = InventarioPedidos(max_weight=max_inventory_weight)
+        self.inventory = InventarioPedidos(
+            max_weight=max_inventory_weight,
+            screen_width=screen_width,
+            screen_height=screen_height
+        )
 
     def __len__(self) -> int:
         """Permite usar len(gestor) para obtener el número de pedidos en cola."""

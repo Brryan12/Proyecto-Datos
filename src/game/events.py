@@ -10,11 +10,12 @@ class Events:
     - Pausa y salida del juego
     """
 
-    def __init__(self, player, gestor, notificador, undo_system):
+    def __init__(self, player, gestor, notificador, undo_system, inventario=None):
         self.player = player
         self.gestor = gestor
         self.notificador = notificador
         self.undo_system = undo_system
+        self.inventario = inventario
 
         # Velocidad base del jugador
         self.velocidad = 5
@@ -38,8 +39,12 @@ class Events:
             
             # Manejar sistema de deshacer
             if event.type == pygame.KEYDOWN:
+                # Alternar inventario (tecla I)
+                if event.key == pygame.K_i and self.inventario:
+                    self.inventario.toggle_inventario()
+
                 # Deshacer un movimiento (tecla U)
-                if event.key == pygame.K_u and not self.notificador.activo:
+                elif event.key == pygame.K_u and not self.notificador.activo:
                     self.undo_system.undo_last_move(self.player, self.gestor)
 
                 # Deshacer múltiples movimientos (tecla R + número)
