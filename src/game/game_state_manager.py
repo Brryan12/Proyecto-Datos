@@ -186,7 +186,7 @@ class GameStateManager:
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(game_state.model_dump(), f, indent=4, ensure_ascii=False)
         
-        print(f"[SAVE] Estado completo guardado en {file_path}")
+
         return save_id
     
     def load_game_state(self, save_file: Path) -> GameState:
