@@ -29,11 +29,13 @@ Se deben correr estos comandos en consola para instalar los paquetes que permite
 - pip install pydantic
 - pip install pygame
 
-##Estructura general del proyecto
+## Estructura general del proyecto
 
-El proyecto se divide en varias partes. Primeramente, se tiene un carpeta llamada API, la cual se encarga de cargar los datos de la API dada en el enunciado. Esta carga tanto los datos del mapa como los de clima y pedidos. Por otra parte, para trabajar esos datos como clases e instancias de objetos en python, se tiene la carpeta de models, que, a partir del manejador de las API, los carga de forma distinta cada uno de los datos. Se subdividen en varios archivos, las cuales cargan estos mismos datos. Todo lo anterior se aplica la carpeta de game.
+El proyecto se divide en varias partes. Primeramente, se tiene un carpeta llamada API, la cual se encarga de cargar los datos de la API dada en el enunciado. Esta carga tanto los datos del mapa como los de clima y pedidos. Por otra parte, para trabajar esos datos como clases e instancias de objetos en python, se tiene la carpeta de models, que, a partir del manejador de las API, los carga de forma distinta cada uno de los datos. Se subdividen en varios archivos, las cuales cargan estos mismos datos. Para asegurar que se trabajen como paquetes, se aplica el __init__ (vacío) en cada uno de ellos. Todo lo anterior se aplica la carpeta de game. 
 
-La carpeta de game tiene múltiples archivos. Por un lado, 
+La carpeta de game tiene múltiples archivos. Por un lado, map_rend se encarga de renderizar el mapa, aplicando los sprites que vienen en la carpeta de los sprites. El archivo de player se encarga del movimiento y cargado del player en el mapa. Para la reputación, este, en base al enunciado, trabaja la reputación al entregar a tiempo o tarde los proyectos. El score elabora el puntaje que gana el usuario, principalmente esto es calculado por los pedidos, bonos y otros elementos. El stats_module carga las estadísticas del clima, la reputación y movimiento para gestionarla en otros archivos. Los pedidos que se quieren utilizar se aplican en job_manager.py e inventory.py, los cuales afectan el movimiento del jugador y muestran los pedidos correspondientes. Todo esto se relaciona también con el clima, el cual aplica cadenas de markov en el weather_system.py. Todo lo que sea guardado de archivos en el programa es en el save.py. Por otra parte, el undo.py se encarga de que el player se devuelva en sus pasos, lo cual se explica su estructura de datos abajo. 
+
+Todo esto se termina incorporando en los siguientes archivos. El map_logic se encarga de la lógica del mapa, 
 
 
 Las estructuras de datos aplicadas fueron las siguientes:
