@@ -614,6 +614,11 @@ def game(new_game=False, save_file=None):
         
         # Dibujar paquetes y puntos de entrega para pedidos activos
         pedidos_activos = gestor.ver_pedidos()
+        # Debug: mostrar información de pedidos activos cada 60 frames (aprox 1 segundo)
+        if pygame.time.get_ticks() % 1000 < 50:  # Solo mostrar ocasionalmente
+            print(f"[Debug] Pedidos activos en cola: {len(pedidos_activos)}")
+            for i, pedido in enumerate(pedidos_activos):
+                print(f"  {i+1}. {pedido.id} - Pickup: {pedido.pickup}, Dropoff: {pedido.dropoff}")
         renderer.draw_package_icons(SCREEN, pedidos_activos)
         
         # Dibujar cuadrícula de debug (opcional)
@@ -644,7 +649,7 @@ def game(new_game=False, save_file=None):
         
         hud_lines = [
             f"Tiempo: {tiempo_actual_segundos}s | Restante: {minutos:02d}:{segundos:02d}",
-            f"Jugador: {player.name}",
+            f"Jugador: {player.name} | Score: {player.score.calcular_total()}",
             f"Resistencia: {player.stats.resistencia:.1f} | Estado: {player.stats.estado_actual()}",
             f"Reputacion: {player.reputation.valor} | Clima: {condicion}",
             f"Pedidos activos: {len(gestor)} | Pendientes: {notificador.obtener_pedidos_pendientes_count()}",

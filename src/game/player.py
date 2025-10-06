@@ -4,6 +4,7 @@ from typing import Optional
 from src.game.stats_module import Stats
 from src.game.reputation import Reputation
 from src.game.save import Save
+from src.game.score import Score
 
 
 class Player(pygame.sprite.Sprite):
@@ -31,11 +32,17 @@ class Player(pygame.sprite.Sprite):
 
         self.stats = stats
         self.reputation = reputation
+        
+        # Inicializar score como entidad propia del jugador
+        self.score = Score()
 
         # Si viene un guardado, sincronizamos reputación y score 
         if save_data: 
             self.reputation.valor = save_data.reputation 
-            self.stats.score = save_data.score if hasattr(self.stats, "score") else 0
+            # Restaurar score desde guardado
+            if hasattr(save_data, 'score') and save_data.score:
+                # Como save_data.score es un int, inicializamos con ingresos
+                self.score.ingresos = float(save_data.score)
             if hasattr(save_data, 'player_name') and save_data.player_name:
                 self.name = save_data.player_name
 
@@ -193,13 +200,29 @@ class Player(pygame.sprite.Sprite):
 
     def nuevo_dia(self):
         self.reputation.reset_diario()
+    
+    def agregar_ingreso(self, payout: float, meta=None):
+        """Agregar ingresos al score del jugador"""
+        return self.score.agregar_ingreso(payout, self.reputation.valor, meta)
+    
+    def agregar_bono(self, cantidad: float, motivo: str, meta=None):
+        """Agregar bono al score del jugador"""
+        self.score.agregar_bono(cantidad, motivo, meta)
+    
+    def agregar_penalizacion(self, cantidad: float, motivo: str, meta=None):
+        """Agregar penalización al score del jugador"""
+        self.score.agregar_penalizacion(cantidad, motivo, meta)
+    
+    def obtener_score_total(self) -> int:
+        """Obtener el score total calculado"""
+        return self.score.calcular_total()
 
     def exportar_estado(self, player_name, day, city_name=None, score=None, reputation=None, position=None, current_weather=None):
         return Save(
         player_name=player_name,
         day=day if day else 1,
         city_name=city_name if city_name is not None else "TigerCity",
-        score=self.stats if score is not None else 0,
+        score=self.score.calcular_total(),
         reputation=self.reputation.valor,
         position=(int(self.x), int(self.y)),
         completed_jobs=[],  # puedes llenar si tienes jobs completados

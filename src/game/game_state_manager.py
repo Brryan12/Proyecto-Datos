@@ -126,7 +126,7 @@ class GameStateManager:
             resistencia=stats.resistencia,
             resistencia_max=stats.resistencia_max,
             exhaust_lock=stats._exhaust_lock,
-            score=getattr(stats, 'score', 0),
+            score=player.score.calcular_total(),
             reputation=reputation.valor,
             
             # Estado del tiempo
@@ -225,8 +225,11 @@ class GameStateManager:
         stats.resistencia = game_state.resistencia
         stats.resistencia_max = game_state.resistencia_max
         stats._exhaust_lock = game_state.exhaust_lock
-        if hasattr(stats, 'score'):
-            stats.score = game_state.score
+        
+        # Restaurar score en player
+        player.score.ingresos = float(game_state.score)
+        player.score.bonus_time = 0.0  # Reset otros valores si es necesario
+        player.score.penalizacion = 0.0
         
         # Restaurar reputación
         reputation.valor = game_state.reputation
