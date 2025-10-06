@@ -29,6 +29,8 @@ Se deben correr estos comandos en consola para instalar los paquetes que permite
 - pip install pydantic
 - pip install pygame
 
+Estructura general del proyecto
+
 Las estructuras de datos aplicadas fueron las siguientes:
 En términos generales, se usan los dict y list que aplican de forma predeterminada por Python. En estos casos, almacena las relaciones clave-valor, las cuales han servido para almacenar las estadísticas, los estados de clima, el mapa y otros elementos. Todas sus operaciones utilizan una complejidad algorítmica en el mejor de los casos de O(1) y en el peor de O(n), tanto para insertar, buscar, eliminar y actualizar. 
 
