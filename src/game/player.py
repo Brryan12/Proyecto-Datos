@@ -193,15 +193,6 @@ class Player(pygame.sprite.Sprite):
 
     def nuevo_dia(self):
         self.reputation.reset_diario()
-    
-    def exportar_estado(self) -> Save: 
-        """Convierte el estado actual del jugador en un Save listo para guardar.""" 
-        data = Save( 
-            position=(self.x, self.y), 
-            score=getattr(self.stats, "score", 0), 
-            reputation=self.reputation.valor 
-        ) 
-        return data
 
     def exportar_estado(self, player_name, day, city_name=None, score=None, reputation=None, position=None, current_weather=None):
         return Save(
