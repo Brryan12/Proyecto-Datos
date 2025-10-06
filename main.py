@@ -50,37 +50,7 @@ WINDOW_WIDTH = MAP_WIDTH + HUD_WIDTH
 WINDOW_HEIGHT = MAP_HEIGHT
 SCREEN = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 
-def test_reputation():
-    print("=== PRUEBAS DE REPUTATION ===")
-    rep = Reputation()
-    print("Inicial:", rep.valor, rep.obtener_multiplicador_pago())
-    rep.registrar_entrega("a_tiempo")
-    print("Tras entrega a tiempo:", rep.valor)
-    rep.valor = 85
-    print("Bono aplicado?:", rep.obtener_multiplicador_pago())
-    rep.registrar_entrega("tarde")
-    print("Tras tardanza mitigada:", rep.valor)
-    rep.registrar_entrega("tarde")
-    print("Tras tardanza normal:", rep.valor)
-    rep.valor = 15
-    print("Derrota?:", rep.derrotado())
-
-def test_stats():
-    print("=== PRUEBAS DE STATS ===")
-    s = Stats()
-    print("Inicial:", s.resistencia, s.estado_actual(), s.puede_moverse())
-    consumo = s.consume_por_mover(celdas=1, peso_total=2, condicion_clima="clear")
-    print("Mover 1 celda clear, peso 2 -> consumo", consumo, "Resistencia:", s.resistencia)
-    consumo = s.consume_por_mover(celdas=1, peso_total=6, condicion_clima="rain")
-    print("Mover 1 celda lluvia, peso 6 -> consumo", consumo, "Resistencia:", s.resistencia)
-    s.consume_por_mover(celdas=200, peso_total=1, condicion_clima="storm")
-    print("Tras tormenta:", s.resistencia, s.estado_actual(), s.puede_moverse())
-    s.recupera(segundos=3, rest_point=False)
-    print("Tras 3s idle:", s.resistencia, s.estado_actual(), s.puede_moverse())
-    s.recupera(segundos=2, rest_point=True)
-    print("Tras 2s rest:", s.resistencia, s.estado_actual(), s.puede_moverse())
-
-
+save = Save.load_from_file()
 
 def game():
     print("Iniciando Courier Quest...")
@@ -389,7 +359,7 @@ def game():
         urgentes = gestor.ordenar_por_prioridad()
         for idx, pedido in enumerate(urgentes):
             tiempo_restante_pedido = max(0, (pedido.release_time + pedido.duration) - tiempo_actual_segundos)
-            hud_lines.append(f"{idx+1}. {pedido.id} P:{pedido.priority} T:{tiempo_restante_pedido}s")
+            hud_lines.append(f"{idx+1}. {pedido.id} P:{pedido.priority} T:{tiempo_restante_pedido}s Peso:{pedido.weight}kg")
 
         for i, line in enumerate(hud_lines):
             hud_surface = get_font(8).render(line, True, (255, 255, 255))
@@ -447,16 +417,16 @@ def main_menu():
         MENU_TEXT = get_font(title_font_size).render("COURIER QUEST", True, "#b68f40")
         MENU_RECT = MENU_TEXT.get_rect(center=(center_x, center_y - 200))
 
-        PLAY_BUTTON = Button(image=pygame.image.load("sprites/Play Rect.png"), pos=(center_x, center_y - 100), 
+        PLAY_BUTTON = Button(None, pos=(center_x, center_y - 100), 
                             text_input="PLAY", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
-        OPTIONS_BUTTON = Button(image=pygame.image.load("sprites/Options Rect.png"), pos=(center_x, center_y + 20), 
-                            text_input="OPTIONS", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
-        QUIT_BUTTON = Button(image=pygame.image.load("sprites/Quit Rect.png"), pos=(center_x, center_y + 140), 
+        SCORE_BUTTON = Button(None, pos=(center_x, center_y + 20), 
+                            text_input="SCORE BOARD", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
+        QUIT_BUTTON = Button(None, pos=(center_x, center_y + 140), 
                             text_input="QUIT", font=get_font(button_font_size), base_color="#d7fcd4", hovering_color="White")
 
         SCREEN.blit(MENU_TEXT, MENU_RECT)
 
-        for button in [PLAY_BUTTON, OPTIONS_BUTTON, QUIT_BUTTON]:
+        for button in [PLAY_BUTTON, SCORE_BUTTON, QUIT_BUTTON]:
             button.changeColor(MENU_MOUSE_POS)
             button.update(SCREEN)
         
@@ -467,7 +437,7 @@ def main_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if PLAY_BUTTON.checkForInput(MENU_MOUSE_POS):
                     game()
-                if OPTIONS_BUTTON.checkForInput(MENU_MOUSE_POS):
+                if SCORE_BUTTON.checkForInput(MENU_MOUSE_POS):
                     # options() # Función no implementada aún
                     pass
                 if QUIT_BUTTON.checkForInput(MENU_MOUSE_POS):
