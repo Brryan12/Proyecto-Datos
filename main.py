@@ -52,38 +52,6 @@ SCREEN = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 
 save = Save.load_from_file()
 
-def test_reputation():
-    print("=== PRUEBAS DE REPUTATION ===")
-    rep = Reputation()
-    print("Inicial:", rep.valor, rep.obtener_multiplicador_pago())
-    rep.registrar_entrega("a_tiempo")
-    print("Tras entrega a tiempo:", rep.valor)
-    rep.valor = 85
-    print("Bono aplicado?:", rep.obtener_multiplicador_pago())
-    rep.registrar_entrega("tarde")
-    print("Tras tardanza mitigada:", rep.valor)
-    rep.registrar_entrega("tarde")
-    print("Tras tardanza normal:", rep.valor)
-    rep.valor = 15
-    print("Derrota?:", rep.derrotado())
-
-def test_stats():
-    print("=== PRUEBAS DE STATS ===")
-    s = Stats()
-    print("Inicial:", s.resistencia, s.estado_actual(), s.puede_moverse())
-    consumo = s.consume_por_mover(celdas=1, peso_total=2, condicion_clima="clear")
-    print("Mover 1 celda clear, peso 2 -> consumo", consumo, "Resistencia:", s.resistencia)
-    consumo = s.consume_por_mover(celdas=1, peso_total=6, condicion_clima="rain")
-    print("Mover 1 celda lluvia, peso 6 -> consumo", consumo, "Resistencia:", s.resistencia)
-    s.consume_por_mover(celdas=200, peso_total=1, condicion_clima="storm")
-    print("Tras tormenta:", s.resistencia, s.estado_actual(), s.puede_moverse())
-    s.recupera(segundos=3, rest_point=False)
-    print("Tras 3s idle:", s.resistencia, s.estado_actual(), s.puede_moverse())
-    s.recupera(segundos=2, rest_point=True)
-    print("Tras 2s rest:", s.resistencia, s.estado_actual(), s.puede_moverse())
-
-
-
 def game():
     print("Iniciando Courier Quest...")
     TILE_WIDTH = 20
