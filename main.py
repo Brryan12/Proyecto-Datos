@@ -510,12 +510,24 @@ def game(new_game=False, save_file=None):
             pygame.draw.rect(SCREEN, (200, 0, 0), (dx * 20, dy * 20, 18, 18))
 
             # Verifica si el jugador está adyacente a pickup
-            if es_adyacente(player_position, pedido.pickup) and not pedido.recogido:
+            if es_adyacente((px,py), pedido.pickup) and not pedido.recogido:
                 mostrar_boton_recoger(pedido)
 
             # Verifica si el jugador está adyacente a dropoff (solo si ya tiene el paquete)
-            if es_adyacente(player_position, pedido.dropoff) and pedido.recogido:
+            if es_adyacente((px, py), pedido.dropoff) and pedido.recogido:
                 mostrar_boton_entregar(pedido)
+
+            # Mostrar información de release_time de cada pedido
+            for pedido in pedidos:
+                # Si el jugador está en la casilla de recogida
+                if (px, py) == tuple(pedido.pickup) and not tiene_paquete:
+                    mostrar_boton_recoger(pedido)
+                    print(f"Pedido {pedido.id}: release_time = {pedido.release_time}s")
+
+                # Si está en la casilla de entrega
+                elif pedido_actual and (px, py) == tuple(pedido_actual.dropoff) and tiene_paquete:
+                    mostrar_boton_entregar(pedido_actual)
+
 
         # Mostrar botón si está en pickup
         boton_rect = None
