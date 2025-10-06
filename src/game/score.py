@@ -16,7 +16,7 @@ class Score:
         self.penalizacion: float = 0.0
         self.events: List[Dict[str, Any]] = []
 
-        if score_file is None:
+        if score_file is None: #crea el archivo en caso de que no exista
             score_file = Path("data") / "puntajes.json"
         self.score_file: Path = Path(score_file)
 
@@ -31,12 +31,12 @@ class Score:
     ) -> float:
         multiplicador_pago = 1.0
         if reputation is not None and reputation >= self.reputation_threshold:
-            multiplicador_pago += self.reputation_pct
+            multiplicador_pago += self.reputation_pct #al hacer la entrega, calcula si debe haber un multiplicador por entregarlo en los tiempos correctos.
 
         ganado = float(payout) * multiplicador_pago
         self.ingresos += ganado
 
-        self.events.append({
+        self.events.append({ #Se muestran los datos para guardar en el archivo.
             "type": "income",
             "base": float(payout),
             "reputation": reputation,
@@ -49,7 +49,7 @@ class Score:
 
     def agregar_bono(
         self, ganado: float, motive: str, meta: Optional[Dict[str, Any]] = None
-    ) -> None:
+    ) -> None: #en el caso que cumpla con los plazos, se agrega el bono.
         self.bonus_time += float(ganado)
         self.events.append({
             "type": "bonus",
@@ -61,7 +61,7 @@ class Score:
 
     def agregar_penalizacion(
         self, perdido: float, motive: str, meta: Optional[Dict[str, Any]] = None
-    ) -> None:
+    ) -> None: #En caso de no cumplir con plazos, se agrega la penalización con sus datos
         self.penalizacion += float(perdido)
         self.events.append({
             "type": "penalty",
@@ -71,14 +71,14 @@ class Score:
             "ts": datetime.utcnow().isoformat(),
         })
 
-    def calcular_total(self) -> int:
+    def calcular_total(self) -> int: #calcula el puntaje, según bonos y penalizaciones
         total = self.ingresos + self.bonus_time - self.penalizacion
         return int(round(total))
 
-    def save_scoreboard(self) -> None:
+    def save_scoreboard(self) -> None: #guarda los resultados con el dict correspondiente
         self.score_file.parent.mkdir(parents=True, exist_ok=True)
 
-        if self.score_file.exists():
+        if self.score_file.exists(): #si existe, se carga la información en tabla. En el caso que no o se produzca un error, se da una tabla vacía
             try:
                 with open(self.score_file, "r", encoding="utf-8") as f:
                     tabla = json.load(f)
@@ -99,12 +99,12 @@ class Score:
         }
 
         tabla.append(resumen)
-        tabla.sort(key=lambda x: x.get("puntaje_final", 0), reverse=True)
+        tabla.sort(key=lambda x: x.get("puntaje_final", 0), reverse=True) #usa un sort de python base para acomodar los scores de los jugadores.
 
-        with open(self.score_file, "w", encoding="utf-8") as f:
+        with open(self.score_file, "w", encoding="utf-8") as f: #se envia la información a JSON
             json.dump(tabla, f, indent=2, ensure_ascii=False)
 
-    def exportar_reporte(self, out_path: Optional[Path] = None) -> None:
+    def exportar_reporte(self, out_path: Optional[Path] = None) -> None: #Se exporta la información en formato JSON
         p = Path(out_path) if out_path else (
             self.score_file.parent / f"puntaje_full_{datetime.utcnow().isoformat()}.json"
         )
