@@ -2,7 +2,7 @@ from pydantic import BaseModel, validator
 
 class CondicionClima(BaseModel):
     condition: str
-    intensity: int
+    intensity: float
 
     @validator("intensity", pre=True)
     def normalizar_intensidad(cls, v):

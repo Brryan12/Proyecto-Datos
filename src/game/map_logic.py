@@ -27,15 +27,15 @@ class MapLogic:
                 return True
                 
             # Si es un edificio, siempre bloqueado
-            if tile_info.name == "building":
+            if tile_info.name == "edificio":
                 return True
                 
             # Parques: caminables en este juego
-            if tile_info.name == "park":
+            if tile_info.name == "parque":
                 return False
                 
             # Calles siempre caminables
-            if tile_info.name == "street":
+            if tile_info.name == "calle":
                 return False
                 
             # Por defecto, si no sabemos qué es, lo consideramos bloqueado

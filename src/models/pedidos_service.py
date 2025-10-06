@@ -13,7 +13,7 @@ class ServicioPedidos:
         self.api = ManejadorAPI(cache_dir=self.cache_dir)
         self.default_duration = default_duration
 
-    def cargar_pedidos(self, force_update: bool = False) -> List[PedidoSolicitud]:
+    def cargar_pedidos(self, force_update: bool = True) -> List[PedidoSolicitud]:
 
         jobs_file = self.cache_dir / "jobs.json"
 
