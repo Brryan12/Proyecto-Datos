@@ -72,12 +72,10 @@ class Events:
 
                 # Recoger paquete (tecla N)
                 elif event.key == pygame.K_n and self.recoger_callback and self.pedidos_data:
-                    print("[DEBUG] Tecla N detectada - llamando _manejar_recoger_paquete")
                     self._manejar_recoger_paquete()
 
                 # Entregar paquete (tecla M)
                 elif event.key == pygame.K_m and self.entregar_callback and self.pedidos_data:
-                    print("[DEBUG] Tecla M detectada - llamando _manejar_entregar_paquete")
                     self._manejar_entregar_paquete()
 
                 # Pausar el juego
@@ -105,14 +103,10 @@ class Events:
             # Fallback usando posición directa
             player_tile_pos = (self.player.x // self.player.tile_width, self.player.y // self.player.tile_height)
         
-        print(f"[DEBUG] Tecla N presionada. Posición jugador: {player_tile_pos}")
-        
         # Buscar pedidos adyacentes que no han sido recogidos
         for pedido in pedidos:
             if pedido not in pedidos_recogidos:
-                print(f"[DEBUG] Verificando pedido {pedido.id} en pickup {pedido.pickup}")
                 if es_adyacente(player_tile_pos, tuple(pedido.pickup)):
-                    print(f"[DEBUG] ¡Recogiendo pedido {pedido.id}!")
                     self.recoger_callback(pedido)
                     break
 
@@ -134,14 +128,10 @@ class Events:
             # Fallback usando posición directa
             player_tile_pos = (self.player.x // self.player.tile_width, self.player.y // self.player.tile_height)
         
-        print(f"[DEBUG] Tecla M presionada. Posición jugador: {player_tile_pos}")
-        
         # Buscar pedidos en el inventario que pueden ser entregados
         pedidos_en_inventario = self.inventario.get_orders()
         for pedido in pedidos_en_inventario:
-            print(f"[DEBUG] Verificando entrega pedido {pedido.id} en dropoff {pedido.dropoff}")
             if pedido not in pedidos_entregados and es_adyacente(player_tile_pos, tuple(pedido.dropoff)):
-                print(f"[DEBUG] ¡Entregando pedido {pedido.id}!")
                 self.entregar_callback(pedido)
                 break
 

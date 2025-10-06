@@ -11,7 +11,7 @@ from src.models.CityMap import CityMap
 class ManejadorAPI:
     BASE_URL = "https://tigerds-api.kindflower-ccaf48b6.eastus.azurecontainerapps.io"
 
-    def __init__(self, cache_dir: str = "cache", default_duration: int = 15 * 60):
+    def __init__(self, cache_dir: str = "cache", default_duration: int = 30):
         self.session = requests.Session()
         self.session.headers.update({"accept": "application/json"})
         self.cache_dir = Path(cache_dir)

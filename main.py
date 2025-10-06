@@ -496,19 +496,7 @@ def game(new_game=False, save_file=None):
         if not juego_pausado:
             notificador.actualizar(tiempo_actual_segundos)
         
-        # Dibujar casillas de pickup y dropoff
-        for pedido in pedidos:
-            # Dibujar pickup (verde) solo si no ha sido recogido
-            if pedido not in pedidos_recogidos:
-                px, py = pedido.pickup
-                pygame.draw.rect(SCREEN, (0, 200, 0), (px * 20, py * 20, 18, 18))
-        
-        # Dibujar dropoffs (rojo) solo para paquetes que están en el inventario
-        pedidos_en_inventario = inventario.get_orders()
-        for pedido in pedidos_en_inventario:
-            if pedido not in pedidos_entregados:
-                dx, dy = pedido.dropoff
-                pygame.draw.rect(SCREEN, (200, 0, 0), (dx * 20, dy * 20, 18, 18))
+        # Dibujo de paquetes y puntos de entrega ahora manejado por renderer.draw_package_icons()
 
 
 
@@ -582,9 +570,9 @@ def game(new_game=False, save_file=None):
         SCREEN.fill((0, 0, 0))
         renderer.draw(SCREEN)
         
-        # Dibujar paquetes y puntos de entrega para pedidos activos
+        # Dibujar paquetes y puntos de entrega para pedidos activos con lógica inteligente
         pedidos_activos = gestor.ver_pedidos()
-        renderer.draw_package_icons(SCREEN, pedidos_activos)
+        renderer.draw_package_icons(SCREEN, pedidos_activos, pedidos_recogidos, pedidos_entregados)
         
         # Dibujar cuadrícula de debug (opcional)
         # Si quieres ver los límites de las casillas, descomenta estas líneas:
@@ -616,7 +604,9 @@ def game(new_game=False, save_file=None):
         ]
 
         urgentes = gestor.ordenar_por_prioridad()
-        for idx, pedido in enumerate(urgentes):
+        # Filtrar pedidos que ya fueron entregados del HUD
+        urgentes_no_entregados = [p for p in urgentes if p not in pedidos_entregados]
+        for idx, pedido in enumerate(urgentes_no_entregados):
             tiempo_restante_pedido = max(0, (pedido.release_time + pedido.duration) - tiempo_actual_segundos)
             hud_lines.append(f"{idx+1}. {pedido.id} P:{pedido.priority} T:{tiempo_restante_pedido}s Peso:{pedido.weight}kg")
 
