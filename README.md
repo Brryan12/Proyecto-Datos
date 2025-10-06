@@ -26,8 +26,12 @@ Se debe instalar las siguientes librerías:
 - Pydantic
 
 Se deben correr estos comandos en consola:
-pip install requests
-pip install pydantic
-pip install pygame
+- pip install requests
+- pip install pydantic
+- pip install pygame
+
+
+
+
 
 
