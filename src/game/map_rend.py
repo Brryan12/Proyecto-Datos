@@ -20,7 +20,7 @@ class MapRenderer:
         sprites_dir: Path,
         tile_width: int = 40,
         tile_height: int = 44,
-        viewport_size: Optional[Tuple[int, int]] = None,
+        viewport_size: Optional[Tuple[int, int]] = None, #Dupla para el viewport, el cual da la ubicación en x y y con ints.
     ):
         self.city_map = city_map
         self.sprites_dir = Path(sprites_dir)
@@ -95,7 +95,7 @@ class MapRenderer:
         end_x = min(self.city_map.width, (self.camera_x + viewport_w) // self.tile_width + 1)
         end_y = min(self.city_map.height, (self.camera_y + viewport_h) // self.tile_height + 1)
 
-        for y in range(start_y, end_y):
+        for y in range(start_y, end_y): #dibuja los tiles de x y y, usando los sprites que corresponden.
             fila = self.city_map.tiles[y]
             for x in range(start_x, end_x):
                 code = fila[x]
@@ -122,7 +122,6 @@ class MapRenderer:
                 if package_sprite:
                     screen.blit(package_sprite, (sx, sy))
                 else:
-                    # Fallback: dibujar un rectángulo amarillo
                     pygame.draw.rect(screen, (255, 255, 0), (sx, sy, self.tile_width, self.tile_height))
                     pygame.draw.rect(screen, (200, 200, 0), (sx, sy, self.tile_width, self.tile_height), 2)
             
@@ -136,12 +135,11 @@ class MapRenderer:
                 if delivery_sprite:
                     screen.blit(delivery_sprite, (sx, sy))
                 else:
-                    # Fallback: dibujar un rectángulo rojo
                     pygame.draw.rect(screen, (255, 100, 100), (sx, sy, self.tile_width, self.tile_height))
                     pygame.draw.rect(screen, (200, 50, 50), (sx, sy, self.tile_width, self.tile_height), 2)
 
     def _is_tile_visible(self, tx: int, ty: int) -> bool:
-        """Verifica si una casilla está visible en el viewport actual."""
+        """Verifica si una casilla está visible en el viewport (elemento gráfico) actual."""
         viewport_w, viewport_h = (self.viewport_size if self.viewport_size else (800, 600))
         
         start_x = max(0, self.camera_x // self.tile_width)
