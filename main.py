@@ -50,8 +50,6 @@ WINDOW_WIDTH = MAP_WIDTH + HUD_WIDTH
 WINDOW_HEIGHT = MAP_HEIGHT
 SCREEN = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 
-save = Save.load_from_file()
-
 def test_reputation():
     print("=== PRUEBAS DE REPUTATION ===")
     rep = Reputation()
@@ -89,7 +87,7 @@ def game():
     TILE_WIDTH = 20
     TILE_HEIGHT = 20
 
-
+    save = Save.load_from_file()
 
     # --- cargar mapa ---
     try:
@@ -406,9 +404,9 @@ def game():
     # Incrementar día y guardar
     current_day = save_data.day + 1 
     new_save = player.exportar_estado( 
-        player_name=save_data.player_name,
+        #player_name=save_data.player_name,
         day=current_day,
-        #score=
+        #score=self.
         #reputation=
         position=(px,py),
         #current_weather=  
