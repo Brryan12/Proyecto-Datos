@@ -25,7 +25,7 @@ class ManejadorAPI:
         params = {"city": city, "mode": mode}
 
         response = self.session.get(url, params=params)
-        response.raise_for_status()
+        response.raise_for_status() #Esto permite recibir respuesta del HTTP para la carga de datos
         payload = response.json()
         clima = ClimaData(**payload["data"])
 
@@ -68,7 +68,7 @@ class ManejadorAPI:
     def get_jobs(self, save: bool = True) -> List[PedidoSolicitud]:
         url = f"{self.BASE_URL}/city/jobs"
         response = self.session.get(url)
-        response.raise_for_status()
+        response.raise_for_status() #Esto permite recibir respuesta del HTTP para la carga de datos
         payload = response.json()
 
         # Convierte los pedidos.
@@ -118,7 +118,7 @@ class ManejadorAPI:
     def get_map(self, save: bool = True) -> CityMap:
         url = f"{self.BASE_URL}/city/map"
         response = self.session.get(url)
-        response.raise_for_status()
+        response.raise_for_status() #Esto permite recibir respuesta del HTTP para la carga de datos
         payload = response.json()
 
         city_map = CityMap(**payload["data"])
@@ -153,6 +153,7 @@ class ManejadorAPI:
                 ])
         print(f"Mapa guardado en {filepath}")
 
+    #Sirve para la carga general y actualización de archivos.
     def update_data(self):
         """Descarga y actualiza todos los datos (clima, jobs, mapa)"""
         print("Actualizando datos desde la API...")
