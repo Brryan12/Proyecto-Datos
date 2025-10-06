@@ -29,7 +29,12 @@ Se deben correr estos comandos en consola para instalar los paquetes que permite
 - pip install pydantic
 - pip install pygame
 
-Estructura general del proyecto
+##Estructura general del proyecto
+
+El proyecto se divide en varias partes. Primeramente, se tiene un carpeta llamada API, la cual se encarga de cargar los datos de la API dada en el enunciado. Esta carga tanto los datos del mapa como los de clima y pedidos. Por otra parte, para trabajar esos datos como clases e instancias de objetos en python, se tiene la carpeta de models, que, a partir del manejador de las API, los carga de forma distinta cada uno de los datos. Se subdividen en varios archivos, las cuales cargan estos mismos datos. Todo lo anterior se aplica la carpeta de game.
+
+La carpeta de game tiene múltiples archivos. Por un lado, 
+
 
 Las estructuras de datos aplicadas fueron las siguientes:
 En términos generales, se usan los dict y list que aplican de forma predeterminada por Python. En estos casos, almacena las relaciones clave-valor, las cuales han servido para almacenar las estadísticas, los estados de clima, el mapa y otros elementos. Todas sus operaciones utilizan una complejidad algorítmica en el mejor de los casos de O(1) y en el peor de O(n), tanto para insertar, buscar, eliminar y actualizar. 
