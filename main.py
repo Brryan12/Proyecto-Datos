@@ -292,7 +292,7 @@ def game(new_game=False, save_file=None):
                     save_data_to_use = None  # No usar Save básico
                     is_full_save = True
                     loaded_full_state = loaded_game_state
-                    print(f"[GameStateManager] Partida completa cargada: {player_name}, Día {loaded_game_state.day}")
+
                 else:
                     # Es un guardado básico de Save
                     from src.game.save import Save
@@ -301,7 +301,7 @@ def game(new_game=False, save_file=None):
                     player_name = save_data_to_use.player_name
                     is_full_save = False
                     loaded_full_state = None
-                    print(f"[Save Básico] Partida cargada: {player_name}, Día {save_data_to_use.day}")
+
                     
             except Exception as e:
                 print(f"Error cargando partida: {e}")
@@ -330,7 +330,7 @@ def game(new_game=False, save_file=None):
         with open(CACHE_DIR / "map.json", "r", encoding="utf-8") as f:
             data = json.load(f)
         city_map = CityMap(**data)
-        print("Mapa cargado:", city_map.city_name, city_map.width, city_map.height)
+
     except Exception as e:
         print(f"Error cargando mapa: {e}")
         return
@@ -351,11 +351,7 @@ def game(new_game=False, save_file=None):
         servicio_pedidos = ServicioPedidos(cache_dir=CACHE_DIR)
         # Usa cache si existe; si quieres forzar descarga pon force_update=True
         pedidos = servicio_pedidos.cargar_pedidos(force_update=False)
-        print(f"Pedidos cargados desde cache/API: {len(pedidos)}")
-        
-        # Mostrar información de release_time de cada pedido
-        for pedido in pedidos:
-            print(f"Pedido {pedido.id}: release_time = {pedido.release_time}s")
+
             
     except FileNotFoundError as fnf:
         print("No se encontró jobs.json en cache y no se pudo descargar:", fnf)
@@ -396,28 +392,11 @@ def game(new_game=False, save_file=None):
     # Guardar estado inicial
     undo_system.save_state(player, 0, [])
 
-
-
-    # Demo: imprimir primeros 3 pedidos (info de duración)
-
-    print("\n--- Demostración de uso de duración con pedidos ---")
-    if pedidos:
-        for pedido in pedidos[:3]:
-            print(f"Pedido ID: {pedido.id}, Duración: {pedido.duration} segundos, Tipo: {type(pedido.duration)}")
-        pedidos_ordenados = sorted(pedidos, key=lambda p: p.duration)
-        print("Pedidos ordenados por duración (primeros 3):")
-        for p in pedidos_ordenados:
-            print(f"  {p.id} - {p.duration} s")
-    else:
-        print("No hay pedidos en cache.")
-        
-
     # --- Inicializar inventario ---
     inventario = InventarioPedidos(max_weight=10, screen_width=WINDOW_WIDTH, screen_height=WINDOW_HEIGHT)
 
     # --- Restaurar estado completo si se cargó una partida completa ---
     if is_full_save and loaded_full_state:
-        print("[GameStateManager] Restaurando estado completo del juego...")
         game_state_manager = GameStateManager()
         tiempo_datos = game_state_manager.restore_game_state(
             loaded_full_state, player, stats, rep, gestor,
@@ -425,7 +404,6 @@ def game(new_game=False, save_file=None):
         )
         # Usar los datos de tiempo restaurados
         tiempo_actual_segundos_restored, tiempo_total_pausado_restored, tiempo_inicio_restored = tiempo_datos
-        print(f"[GameStateManager] Estado restaurado - Tiempo: {tiempo_actual_segundos_restored}s, Pausado: {tiempo_total_pausado_restored}ms")
 
     # --- loop principal ---
     running = True
@@ -437,7 +415,6 @@ def game(new_game=False, save_file=None):
         tiempo_actual_target_ms = tiempo_actual_segundos_restored * 1000
         tiempo_inicio = pygame.time.get_ticks() - tiempo_actual_target_ms - tiempo_total_pausado_restored
         tiempo_total_pausado = tiempo_total_pausado_restored
-        print(f"[Time Restore] Target: {tiempo_actual_segundos_restored}s, Pausado: {tiempo_total_pausado_restored}ms")
     else:
         tiempo_inicio = pygame.time.get_ticks()
         tiempo_total_pausado = 0
@@ -474,8 +451,6 @@ def game(new_game=False, save_file=None):
         # ACTUALIZAR NOTIFICADOR - Solo cuando no esté pausado
         if not juego_pausado:
             notificador.actualizar(tiempo_actual_segundos)
-        
-        print(player.current_tile_info)
         
         # Procesar eventos
         event_handler = Events(player, gestor, notificador, undo_system, inventario)
@@ -614,11 +589,6 @@ def game(new_game=False, save_file=None):
         
         # Dibujar paquetes y puntos de entrega para pedidos activos
         pedidos_activos = gestor.ver_pedidos()
-        # Debug: mostrar información de pedidos activos cada 60 frames (aprox 1 segundo)
-        if pygame.time.get_ticks() % 1000 < 50:  # Solo mostrar ocasionalmente
-            print(f"[Debug] Pedidos activos en cola: {len(pedidos_activos)}")
-            for i, pedido in enumerate(pedidos_activos):
-                print(f"  {i+1}. {pedido.id} - Pickup: {pedido.pickup}, Dropoff: {pedido.dropoff}")
         renderer.draw_package_icons(SCREEN, pedidos_activos)
         
         # Dibujar cuadrícula de debug (opcional)
@@ -632,16 +602,8 @@ def game(new_game=False, save_file=None):
         # Dibujar la posición actual del jugador
         player.draw(SCREEN)
         
-        # Opcional: Marcar el tile donde está el jugador
-        px, py = map_logic.get_player_tile_pos(player.rect)
-        tile_rect = pygame.Rect(
-            px * TILE_WIDTH - renderer.camera_x, 
-            py * TILE_HEIGHT - renderer.camera_y, 
-            TILE_WIDTH, TILE_HEIGHT
-        )
-        #pygame.draw.rect(SCREEN, (255, 0, 0, 128), tile_rect, 2)
-
         # --- HUD Actualizado ---
+        px, py = map_logic.get_player_tile_pos(player.rect)
         tiempo_total_segundos = 900
         tiempo_restante_segundos = max(0, tiempo_total_segundos - tiempo_actual_segundos)
         minutos = tiempo_restante_segundos // 60
@@ -826,7 +788,7 @@ def pause(player, stats, rep, gestor, original_caption, game_state_data=None):
                                 day=game_state_data.get('day', 1)
                             )
                             save_id = game_state_manager.save_game_state(game_state)
-                            print(f"[GameStateManager] Guardado completo con ID: {save_id}")
+
                         else:
                             # Fallback al método anterior (limitado)
                             save_data = player.exportar_estado(
@@ -835,7 +797,7 @@ def pause(player, stats, rep, gestor, original_caption, game_state_data=None):
                                 current_weather="clear"
                             )
                             save_id = save_data.save_to_file()
-                            print(f"[Legacy] Guardado básico con ID: {save_id}")
+
                     except Exception as e:
                         print(f"Error al guardar: {e}")
                     # Continuar en pausa después de guardar
