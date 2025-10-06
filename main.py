@@ -780,7 +780,7 @@ def game(new_game=False, save_file=None):
                 if tiempo_restante > 0:
                     tiempo_texto = f"{tiempo_restante}s"
                 else:
-                    tiempo_texto = "EXPIRADO"
+                    tiempo_texto = "Tarde"
                     
                 hud_lines.append(f"{idx+1}. {pedido.id} P:{pedido.priority} T:{tiempo_texto} Peso:{pedido.weight}kg")
         else:
