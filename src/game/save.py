@@ -36,6 +36,10 @@ class Save(BaseModel):
         saves = []
         for f in SAVE_DIR.glob("*.json"):
             try:
+                # Ignorar el archivo de scores ya que tiene un formato diferente
+                if f.name == "savedScores.json":
+                    continue
+                    
                 if f.stat().st_size == 0:
                     print(f"[WARNING] {f} está vacío, se ignorará")
                     continue

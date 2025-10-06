@@ -1,32 +1,32 @@
 {
-    "player_name": "Rofe",
+    "player_name": "Bryan",
     "day": 1,
     "city_name": "TigerCity",
-    "save_timestamp": "2025-10-05T23:17:10.636158",
+    "save_timestamp": "2025-10-06T01:38:14.571093",
     "position": [
-        319.0,
-        281.0
+        310.0,
+        134.0
     ],
-    "direccion": "up",
-    "peso_total": 0.0,
+    "direccion": "down",
+    "peso_total": 1.0,
     "resistencia": 100.0,
     "resistencia_max": 100.0,
     "exhaust_lock": false,
-    "score": 0,
-    "reputation": 70.0,
-    "tiempo_actual_segundos": 68,
-    "tiempo_total_pausado": 6902,
-    "tiempo_inicio": 9575,
-    "current_weather": "wind",
-    "weather_intensity": 0.6705217918538277,
+    "score": 590,
+    "reputation": 81.0,
+    "tiempo_actual_segundos": 146,
+    "tiempo_total_pausado": 11465,
+    "tiempo_inicio": 5734,
+    "current_weather": "fog",
+    "weather_intensity": 0.32754791559452956,
     "weather_transition_state": {
-        "condicion_actual": "wind",
-        "intensidad_actual": 0.6705217918538277,
+        "condicion_actual": "fog",
+        "intensidad_actual": 0.32754791559452956,
         "en_transicion": false,
-        "transicion_inicio": 1759727819.2941928,
-        "transicion_duracion": 3.7136747638541303,
-        "condicion_origen": "clear",
-        "condicion_destino": "wind"
+        "transicion_inicio": 1759736253.5209558,
+        "transicion_duracion": 4.978380969366448,
+        "condicion_origen": "clouds",
+        "condicion_destino": "fog"
     },
     "active_orders": [
         {
@@ -34,7 +34,7 @@
             "priority": 0,
             "weight": 1,
             "payout": 180,
-            "duration": 900,
+            "duration": 30,
             "release_time": 0,
             "pickup": [
                 26,
@@ -50,7 +50,7 @@
             "priority": 1,
             "weight": 2,
             "payout": 260,
-            "duration": 900,
+            "duration": 30,
             "release_time": 60,
             "pickup": [
                 21,
@@ -60,23 +60,13 @@
                 11,
                 17
             ]
-        }
-    ],
-    "inventory_orders": [],
-    "available_orders": [],
-    "completed_jobs": [],
-    "pedidos_mostrados": [
-        "PED-001",
-        "PED-002"
-    ],
-    "selected_inventory_index": 0,
-    "pedidos_pendientes": [
+        },
         {
             "id": "PED-003",
             "priority": 0,
             "weight": 1,
             "payout": 150,
-            "duration": 900,
+            "duration": 30,
             "release_time": 120,
             "pickup": [
                 8,
@@ -86,13 +76,24 @@
                 14,
                 6
             ]
-        },
+        }
+    ],
+    "inventory_orders": [],
+    "available_orders": [],
+    "completed_jobs": [],
+    "pedidos_mostrados": [
+        "PED-002",
+        "PED-003",
+        "PED-001"
+    ],
+    "selected_inventory_index": 0,
+    "pedidos_pendientes": [
         {
             "id": "PED-004",
             "priority": 0,
             "weight": 3,
             "payout": 220,
-            "duration": 900,
+            "duration": 30,
             "release_time": 180,
             "pickup": [
                 14,
@@ -108,7 +109,7 @@
             "priority": 1,
             "weight": 2,
             "payout": 300,
-            "duration": 900,
+            "duration": 30,
             "release_time": 240,
             "pickup": [
                 23,

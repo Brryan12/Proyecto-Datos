@@ -75,7 +75,7 @@ class Score:
         total = self.ingresos + self.bonus_time - self.penalizacion
         return int(round(total))
 
-    def save_scoreboard(self) -> None: #guarda los resultados con el dict correspondiente
+    def save_scoreboard(self, player_name: str) -> None: #guarda solo el nombre del jugador y puntaje final
         self.score_file.parent.mkdir(parents=True, exist_ok=True)
 
         if self.score_file.exists(): #si existe, se carga la información en tabla. En el caso que no o se produzca un error, se da una tabla vacía
@@ -89,13 +89,10 @@ class Score:
         else:
             tabla = []
 
+        # Solo guardar nombre del jugador y puntaje final
         resumen = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "income": self.ingresos,
-            "bonus": self.bonus_time,
-            "penalizations": self.penalizacion,
-            "puntaje_final": self.calcular_total(),
-            "entries_count": len(self.events),
+            "player_name": player_name,
+            "puntaje_final": self.calcular_total()
         }
 
         tabla.append(resumen)

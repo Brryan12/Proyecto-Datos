@@ -258,9 +258,12 @@ def es_adyacente(pos1, pos2):
     x2, y2 = pos2
     return (abs(x1 - x2) == 1 and y1 == y2) or (abs(y1 - y2) == 1 and x1 == x2)
 
-def mostrar_pantalla_victoria(player, tiempo_actual):
+def mostrar_pantalla_victoria(player, tiempo_actual, player_name):
     """Muestra la pantalla de victoria"""
     pygame.display.set_caption("Courier Quest - ¡VICTORIA!")
+    
+    # Guardar automáticamente el scoreboard
+    player.score.save_scoreboard(player_name)
     
     while True:
         SCREEN.blit(BG, (0, 0))
@@ -301,9 +304,12 @@ def mostrar_pantalla_victoria(player, tiempo_actual):
         
         pygame.display.update()
 
-def mostrar_pantalla_derrota(player, tiempo_actual, razon):
+def mostrar_pantalla_derrota(player, tiempo_actual, razon, player_name):
     """Muestra la pantalla de derrota"""
     pygame.display.set_caption("Courier Quest - Derrota")
+    
+    # Guardar automáticamente el scoreboard
+    player.score.save_scoreboard(player_name)
     
     while True:
         SCREEN.blit(BG, (0, 0))
@@ -623,22 +629,22 @@ def game(new_game=False, save_file=None):
         if not juego_pausado:
             # Condición de DERROTA por reputación
             if player.reputation.valor < 20:
-                mostrar_pantalla_derrota("reputacion", tiempo_actual_segundos, player.score.calcular_total())
+                mostrar_pantalla_derrota(player, tiempo_actual_segundos, "Reputación muy baja", player_name)
                 return
             
             # Condición de DERROTA por tiempo agotado
             if tiempo_actual_segundos >= TIEMPO_TOTAL_JORNADA:
                 total_score = player.score.calcular_total()
                 if total_score >= META_INGRESOS:
-                    mostrar_pantalla_victoria(tiempo_actual_segundos, total_score, player.reputation.valor)
+                    mostrar_pantalla_victoria(player, tiempo_actual_segundos, player_name)
                 else:
-                    mostrar_pantalla_derrota("tiempo", tiempo_actual_segundos, total_score)
+                    mostrar_pantalla_derrota(player, tiempo_actual_segundos, "Tiempo agotado", player_name)
                 return
             
             # Condición de VICTORIA por meta alcanzada
             total_score = player.score.calcular_total()
             if total_score >= META_INGRESOS:
-                mostrar_pantalla_victoria(tiempo_actual_segundos, total_score, player.reputation.valor)
+                mostrar_pantalla_victoria(player, tiempo_actual_segundos, player_name)
                 return
         
         # ACTUALIZAR NOTIFICADOR - Solo cuando no esté pausado
@@ -855,7 +861,97 @@ def game(new_game=False, save_file=None):
         # Actualizar la screen
         pygame.display.update()
 
+def show_scoreboard():
+    """Muestra la pantalla del scoreboard con el top de jugadores"""
+    pygame.display.set_caption("Courier Quest - Score Board")
     
+    # Cargar scores desde el archivo
+    from pathlib import Path
+    import json
+    
+    score_file = Path("src/game/saves/savedScores.json")
+    scores = []
+    
+    if score_file.exists():
+        try:
+            with open(score_file, 'r', encoding='utf-8') as f:
+                scores = json.load(f)
+                if not isinstance(scores, list):
+                    scores = []
+        except (json.JSONDecodeError, FileNotFoundError):
+            scores = []
+    
+    while True:
+        SCREEN.blit(BG, (0, 0))
+        
+        # Título
+        title_font = get_font(40)
+        title = title_font.render("TOP SCORES", True, (255, 215, 0))
+        title_rect = title.get_rect(center=(WINDOW_WIDTH // 2, 80))
+        SCREEN.blit(title, title_rect)
+        
+        # Mostrar scores
+        if scores:
+            # Limitar a top 10
+            top_scores = scores[:10]
+            
+            y_start = 150
+            for i, entry in enumerate(top_scores):
+                rank = i + 1
+                player_name = entry.get('player_name', 'Unknown')
+                score_value = entry.get('puntaje_final', 0)
+                
+                # Color oro para el primer lugar, plata para el segundo, bronce para el tercero
+                if rank == 1:
+                    color = (255, 215, 0)  # Oro
+                elif rank == 2:
+                    color = (192, 192, 192)  # Plata
+                elif rank == 3:
+                    color = (205, 127, 50)  # Bronce
+                else:
+                    color = (255, 255, 255)  # Blanco
+                
+                # Formatear texto
+                rank_text = f"{rank}."
+                name_text = f"{player_name}"
+                score_text = f"${score_value}"
+                
+                # Renderizar y mostrar
+                font = get_font(20)
+                rank_surface = font.render(rank_text, True, color)
+                name_surface = font.render(name_text, True, color)
+                score_surface = font.render(score_text, True, color)
+                
+                y_pos = y_start + i * 40
+                
+                # Posiciones: ranking a la izquierda, nombre al centro, score a la derecha
+                SCREEN.blit(rank_surface, (100, y_pos))
+                SCREEN.blit(name_surface, (200, y_pos))
+                SCREEN.blit(score_surface, (WINDOW_WIDTH - 200, y_pos))
+        else:
+            # No hay scores guardados
+            no_scores_font = get_font(24)
+            no_scores_text = no_scores_font.render("No hay puntuaciones guardadas", True, (200, 200, 200))
+            no_scores_rect = no_scores_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
+            SCREEN.blit(no_scores_text, no_scores_rect)
+        
+        # Botón de regreso
+        back_font = get_font(16)
+        back_text = back_font.render("Presiona ESC para volver al menú", True, (150, 150, 150))
+        back_rect = back_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 50))
+        SCREEN.blit(back_text, back_rect)
+        
+        # Manejar eventos
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return  # Volver al menú principal
+        
+        pygame.display.update()
+
 def main_menu():
     pygame.display.set_caption("Courier Quest - Menú Principal")
     api = ManejadorAPI(cache_dir=CACHE_DIR)
@@ -998,53 +1094,6 @@ def pause(player, stats, rep, gestor, original_caption, game_state_data=None):
                     sys.exit()
 
         pygame.display.update()
-
-def show_scoreboard():
-    pygame.display.set_caption("Courier Quest - Score Board")
-    clock = pygame.time.Clock()
-    running = True
-
-    # Cargar ranking
-    ranking = Save.get_ranking(top_n=10)
-
-    while running:
-        dt = clock.tick(60)
-        SCREEN.blit(BG, (0, 0))
-
-        # Mostrar título
-        title_font = get_font(36)
-        title_text = title_font.render("SCORE BOARD", True, (255, 215, 0))
-        title_rect = title_text.get_rect(center=(WINDOW_WIDTH // 2, 50))
-        SCREEN.blit(title_text, title_rect)
-
-        # Mostrar lista de jugadores y scores
-        list_font = get_font(24)
-        y_start = 120
-        for i, (nombre, score) in enumerate(ranking, start=1):
-            line_text = list_font.render(f"{i}. {nombre}: {score}", True, (255, 255, 255))
-            SCREEN.blit(line_text, (WINDOW_WIDTH // 2 - 100, y_start + i * 30))
-
-        # Botón de regreso
-        mouse_pos = pygame.mouse.get_pos()
-        back_button = Button(None, pos=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 80),
-                             text_input="BACK", font=get_font(24), base_color="#d7fcd4", hovering_color="White")
-        back_button.changeColor(mouse_pos)
-        back_button.update(SCREEN)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    running = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if back_button.checkForInput(mouse_pos):
-                    running = False
-
-        pygame.display.update()
-
-
 
 if __name__ == "__main__":
     main_menu()

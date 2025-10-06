@@ -33,8 +33,10 @@ class Player(pygame.sprite.Sprite):
         self.stats = stats
         self.reputation = reputation
         
-        # Inicializar score como entidad propia del jugador
-        self.score = Score()
+        # Inicializar score como entidad propia del jugador con archivo específico
+        from pathlib import Path
+        score_file = Path(__file__).resolve().parent / "saves" / "savedScores.json"
+        self.score = Score(score_file=score_file)
 
         # Si viene un guardado, sincronizamos reputación y score 
         if save_data: 
@@ -112,9 +114,6 @@ class Player(pygame.sprite.Sprite):
         # Calcular velocidad final
         velocidad = v0 * m_clima * m_peso * m_rep * m_resistencia * m_superficie
         
-        # Debug opcional
-        # print(f"v={velocidad:.2f} = {v0} * {m_clima:.2f} * {m_peso:.2f} * {m_rep:.2f} * {m_resistencia:.2f} * {m_superficie:.2f}")
-        
         return velocidad
 
     def mover(self, direccion: str, peso_total: float = 0.0, clima: str = "clear", clima_factor: float = 1.0, tile_info: Optional[float] = None):
@@ -179,7 +178,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = (center_x, center_y)
 
         # Consumir resistencia por movimiento
-        #self.stats.consume_por_mover(celdas=1, peso_total=self.peso_total, condicion_clima=clima)
+        self.stats.consume_por_mover(celdas=1, peso_total=self.peso_total, condicion_clima=clima)
 
         self.image = self.sprites[self.direccion]
 

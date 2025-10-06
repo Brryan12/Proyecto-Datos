@@ -1,0 +1,124 @@
+{
+    "player_name": "Bryan",
+    "day": 1,
+    "city_name": "TigerCity",
+    "save_timestamp": "2025-10-06T01:37:20.106843",
+    "position": [
+        259.0,
+        347.0
+    ],
+    "direccion": "down",
+    "peso_total": 2.0,
+    "resistencia": 100.0,
+    "resistencia_max": 100.0,
+    "exhaust_lock": false,
+    "score": 440,
+    "reputation": 76.0,
+    "tiempo_actual_segundos": 102,
+    "tiempo_total_pausado": 1481,
+    "tiempo_inicio": 5734,
+    "current_weather": "clouds",
+    "weather_intensity": 0.5067402616469789,
+    "weather_transition_state": {
+        "condicion_actual": "clouds",
+        "intensidad_actual": 0.5067402616469789,
+        "en_transicion": false,
+        "transicion_inicio": 1759736193.509457,
+        "transicion_duracion": 3.2039507894791734,
+        "condicion_origen": "clear",
+        "condicion_destino": "clouds"
+    },
+    "active_orders": [
+        {
+            "id": "PED-001",
+            "priority": 0,
+            "weight": 1,
+            "payout": 180,
+            "duration": 30,
+            "release_time": 0,
+            "pickup": [
+                26,
+                5
+            ],
+            "dropoff": [
+                6,
+                3
+            ]
+        },
+        {
+            "id": "PED-002",
+            "priority": 1,
+            "weight": 2,
+            "payout": 260,
+            "duration": 30,
+            "release_time": 60,
+            "pickup": [
+                21,
+                18
+            ],
+            "dropoff": [
+                11,
+                17
+            ]
+        }
+    ],
+    "inventory_orders": [],
+    "available_orders": [],
+    "completed_jobs": [],
+    "pedidos_mostrados": [
+        "PED-002",
+        "PED-001"
+    ],
+    "selected_inventory_index": 0,
+    "pedidos_pendientes": [
+        {
+            "id": "PED-003",
+            "priority": 0,
+            "weight": 1,
+            "payout": 150,
+            "duration": 30,
+            "release_time": 120,
+            "pickup": [
+                8,
+                16
+            ],
+            "dropoff": [
+                14,
+                6
+            ]
+        },
+        {
+            "id": "PED-004",
+            "priority": 0,
+            "weight": 3,
+            "payout": 220,
+            "duration": 30,
+            "release_time": 180,
+            "pickup": [
+                14,
+                5
+            ],
+            "dropoff": [
+                26,
+                4
+            ]
+        },
+        {
+            "id": "PED-005",
+            "priority": 1,
+            "weight": 2,
+            "payout": 300,
+            "duration": 30,
+            "release_time": 240,
+            "pickup": [
+                23,
+                24
+            ],
+            "dropoff": [
+                11,
+                3
+            ]
+        }
+    ],
+    "notificacion_activa": false
+}
