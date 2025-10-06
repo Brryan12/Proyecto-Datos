@@ -74,9 +74,12 @@ class Stats:
     def estado_actual(self) -> Literal["normal", "cansado", "exhausto"]:
         if self.resistencia <= 0.0:
             return "exhausto"
-        if self.resistencia <= self.recuperacion_threshold:
+        elif 10.0 <= self.resistencia <= self.recuperacion_threshold:
             return "cansado"
-        return "normal"
+        elif self.resistencia > self.recuperacion_threshold:
+            return "normal"
+        else:  # resistencia entre 0 y 10
+            return "exhausto"
 
     def factor_velocidad(self) -> float:
         estado = self.estado_actual()

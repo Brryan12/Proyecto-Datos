@@ -168,8 +168,8 @@ class Player(pygame.sprite.Sprite):
         # Alinear el centro del rectángulo con el centro de la casilla
         self.rect.center = (center_x, center_y)
 
-        # Consumir resistencia si está descomentado
-        #self.stats.consume_por_mover(celdas=1, peso_total=self.peso_total, condicion_clima=clima)
+        # Consumir resistencia por movimiento
+        self.stats.consume_por_mover(celdas=1, peso_total=self.peso_total, condicion_clima=clima)
 
         self.image = self.sprites[self.direccion]
 
