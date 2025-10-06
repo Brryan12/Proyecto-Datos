@@ -23,7 +23,7 @@ class Reputation:
         self,
         estado: Literal["temprano", "a_tiempo", "tarde", "cancelado", "perdido"],
         delay_seconds: Optional[float] = None,
-    ) -> None:
+    ) -> None: #determina de que forma se debe clasificar la entrega según el tiempo
         estado_l = str(estado).strip().lower()
 
         if estado_l in ("a tiempo", "a_tiempo", "on_time", "ontime"):
@@ -43,7 +43,7 @@ class Reputation:
 
         elif estado_l == "a_tiempo":
             delta = 3  
-            self._streak_no_penalty += 1
+            self._streak_no_penalty += 1 #Si está a tiempo o temprano, aumenta en 1 la racha de entrega.
 
         elif estado_l == "tarde":
             if delay_seconds is None:
@@ -58,7 +58,7 @@ class Reputation:
             if self.valor >= self.mitigacion_threshold and not self._mitigacion_usada:
                 delta = int(round(delta / 2.0))
                 self._mitigacion_usada = True
-            self._streak_no_penalty = 0
+            self._streak_no_penalty = 0 #En el caso que no cumpla los plazos, se rompe la racha
 
         elif estado_l == "cancelado":
             delta = -4
@@ -66,7 +66,7 @@ class Reputation:
 
         elif estado_l == "perdido":
             delta = -6
-            self._streak_no_penalty = 0
+            self._streak_no_penalty = 0 #En el caso que no cumpla los plazos, se rompe la racha
 
         else:
             raise ValueError(f"Estado desconocido para registrar_entrega: {estado}")
@@ -79,18 +79,19 @@ class Reputation:
     def reset_diario(self) -> None:
         self._mitigacion_usada = False
 
-    def obtener_multiplicador_pago(self) -> float:
+    def obtener_multiplicador_pago(self) -> float: #Calcula el pago de la multiplicación por bonos al entregar a tiempo
         if self.valor >= self.bono_threshold:
             return 1.0 + float(self.bono_reputacion_pct)
         return 1.0
 
-    def derrotado(self) -> bool:
+    def derrotado(self) -> bool: #Condición de derrota
         return self.valor < 20
 
     def _ajustar(self, delta: int) -> None:
         self.valor = int(max(0, min(100, int(self.valor) + int(delta))))
 
-    def to_dict(self) -> dict:
+    #Guarda y carga los bonos y mitigaciones (en caso de que exitan) por los tiempos de entrega
+    def to_dict(self) -> dict: 
         return {
             "valor": int(self.valor),
             "bono_reputacion_pct": float(self.bono_reputacion_pct),

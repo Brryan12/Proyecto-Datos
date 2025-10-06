@@ -32,6 +32,7 @@ from src.game.reputation import Reputation
 from src.game.player import Player
 from src.game.weather_system import SistemaClima
 from src.game.undo import UndoSystem
+from src.game.game_state_manager import GameStateManager
 
 # Inicializar pygame antes de usar cualquier función de pygame
 pygame.init()
@@ -122,7 +123,8 @@ def select_save_file():
     """Pantalla para seleccionar una partida guardada"""
     pygame.display.set_caption("Courier Quest - Seleccionar Partida")
     
-    # Buscar todos los archivos de guardado en el directorio src/game/saves
+    # Buscar todos los archivos de guardado usando GameStateManager
+    game_state_manager = GameStateManager()
     save_files = []
     saves_dir = Path("src/game/saves")
     
@@ -130,20 +132,9 @@ def select_save_file():
         for file in saves_dir.glob("*.json"):
             # Excluir el archivo savedScores.json que es solo para puntuaciones
             if file.name != "savedScores.json":
-                try:
-                    with open(file, "r", encoding="utf-8") as f:
-                        save_data = json.load(f)
-                    # Extraer información relevante
-                    save_info = {
-                        'file': file,
-                        'player_name': save_data.get('player_name', 'Sin nombre'),
-                        'day': save_data.get('day', 1),
-                        'reputation': save_data.get('reputation', 0),
-                        'city': save_data.get('city_name', 'TigerCity')
-                    }
+                save_info = game_state_manager.get_save_info(file)
+                if save_info:
                     save_files.append(save_info)
-                except Exception as e:
-                    print(f"Error leyendo {file}: {e}")
     
     if not save_files:
         # No hay partidas guardadas, mostrar mensaje
@@ -202,7 +193,7 @@ def select_save_file():
             
             # Información de la partida
             name_text = list_font.render(f"Jugador: {save_info['player_name']}", True, (255, 255, 255))
-            day_text = list_font.render(f"Día: {save_info['day']} | Rep: {save_info['reputation']}", True, (200, 200, 200))
+            day_text = list_font.render(f"Día: {save_info['day']} | Rep: {save_info['reputation']:.1f} | Score: {save_info.get('score', 0)}", True, (200, 200, 200))
             city_text = list_font.render(f"Ciudad: {save_info['city']}", True, (180, 180, 180))
             
             SCREEN.blit(name_text, (60, y_start + i * 60))
@@ -287,17 +278,37 @@ def game(new_game=False, save_file=None):
             return  # Volver al menú principal
         # Para nueva partida, no usar save data existente
         save_data_to_use = None
+        is_full_save = False
+        loaded_full_state = None
     else:
         # Continuar partida: cargar desde archivo específico si se proporciona
         if save_file:
             try:
+                # Detectar si es un archivo de GameStateManager o Save básico
                 with open(save_file, "r", encoding="utf-8") as f:
-                    save_data = json.load(f)
-                from src.game.save import Save
-                save_data_to_use = Save(**save_data)
-                save = save_data_to_use  # Actualizar save global
-                player_name = save_data_to_use.player_name
-                print(f"Partida cargada: {player_name}, Día {save_data_to_use.day}")
+                    data = json.load(f)
+                
+                # Verificar si tiene campos del GameStateManager
+                if 'tiempo_actual_segundos' in data and 'active_orders' in data:
+                    # Es un guardado completo de GameStateManager
+                    game_state_manager = GameStateManager()
+                    loaded_game_state = game_state_manager.load_game_state(save_file)
+                    
+                    player_name = loaded_game_state.player_name
+                    save_data_to_use = None  # No usar Save básico
+                    is_full_save = True
+                    loaded_full_state = loaded_game_state
+
+                else:
+                    # Es un guardado básico de Save
+                    from src.game.save import Save
+                    save_data_to_use = Save(**data)
+                    save = save_data_to_use  # Actualizar save global
+                    player_name = save_data_to_use.player_name
+                    is_full_save = False
+                    loaded_full_state = None
+
+                    
             except Exception as e:
                 print(f"Error cargando partida: {e}")
                 return
@@ -312,6 +323,8 @@ def game(new_game=False, save_file=None):
             else:
                 player_name = saved_name
             save_data_to_use = save
+            is_full_save = False
+            loaded_full_state = None
     
     TILE_WIDTH = 20
     TILE_HEIGHT = 20
@@ -362,7 +375,7 @@ def game(new_game=False, save_file=None):
         with open(CACHE_DIR / "map.json", "r", encoding="utf-8") as f:
             data = json.load(f)
         city_map = CityMap(**data)
-        print("Mapa cargado:", city_map.city_name, city_map.width, city_map.height)
+
     except Exception as e:
         print(f"Error cargando mapa: {e}")
         return
@@ -383,7 +396,7 @@ def game(new_game=False, save_file=None):
         servicio_pedidos = ServicioPedidos(cache_dir=CACHE_DIR)
         # Usa cache si existe; si quieres forzar descarga pon force_update=True
         pedidos = servicio_pedidos.cargar_pedidos(force_update=False)
-        print(f"Pedidos cargados desde cache/API: {len(pedidos)}")
+
             
     except FileNotFoundError as fnf:
         print("No se encontró jobs.json en cache y no se pudo descargar:", fnf)
@@ -424,43 +437,34 @@ def game(new_game=False, save_file=None):
     # Guardar estado inicial
     undo_system.save_state(player, 0, [])
 
-
-
-    # Demo: imprimir primeros 3 pedidos (info de duración)
-
-    print("\n--- Demostración de uso de duración con pedidos ---")
-    if pedidos:
-        for pedido in pedidos[:3]:
-            print(f"Pedido ID: {pedido.id}, Duración: {pedido.duration} segundos, Tipo: {type(pedido.duration)}")
-        pedidos_ordenados = sorted(pedidos, key=lambda p: p.duration)
-        print("Pedidos ordenados por duración (primeros 3):")
-        for p in pedidos_ordenados:
-            print(f"  {p.id} - {p.duration} s")
-    else:
-        print("No hay pedidos en cache.")
-        
-
     # --- Inicializar inventario ---
     inventario = InventarioPedidos(max_weight=10, screen_width=WINDOW_WIDTH, screen_height=WINDOW_HEIGHT)
 
+    # --- Restaurar estado completo si se cargó una partida completa ---
+    if is_full_save and loaded_full_state:
+        game_state_manager = GameStateManager()
+        tiempo_datos = game_state_manager.restore_game_state(
+            loaded_full_state, player, stats, rep, gestor,
+            sistema_clima, notificador
+        )
+        # Usar los datos de tiempo restaurados
+        tiempo_actual_segundos_restored, tiempo_total_pausado_restored, tiempo_inicio_restored = tiempo_datos
+
     # --- loop principal ---
     running = True
-    tiempo_inicio = pygame.time.get_ticks()
-
-    # Mostrar información de release_time de cada pedido
-    for pedido in pedidos:
-            # Si el jugador está en la casilla de recogida
-        if (px, py) == tuple(pedido.pickup) and not tiene_paquete:
-            mostrar_boton_recoger(pedido)
-            print(f"Pedido {pedido.id}: release_time = {pedido.release_time}s")
-
-        # Si está en la casilla de entrega
-        elif pedido_actual and (px, py) == tuple(pedido_actual.dropoff) and tiene_paquete:
-            mostrar_boton_entregar(pedido_actual)
-
+    # Inicializar tiempo según si se restauró o es nueva partida
+    if is_full_save and loaded_full_state:
+        # Para continuar desde donde se guardó, ajustar tiempo_inicio
+        # Fórmula: tiempo_actual_ms = pygame.time.get_ticks() - tiempo_inicio - tiempo_total_pausado
+        # Despejando: tiempo_inicio = pygame.time.get_ticks() - tiempo_actual_ms - tiempo_total_pausado
+        tiempo_actual_target_ms = tiempo_actual_segundos_restored * 1000
+        tiempo_inicio = pygame.time.get_ticks() - tiempo_actual_target_ms - tiempo_total_pausado_restored
+        tiempo_total_pausado = tiempo_total_pausado_restored
+    else:
+        tiempo_inicio = pygame.time.get_ticks()
+        tiempo_total_pausado = 0
     
     # Variables para controlar el tiempo pausado
-    tiempo_total_pausado = 0  # Tiempo total que ha estado pausado el juego
     tiempo_inicio_pausa = None  # Momento cuando comenzó la pausa actual
     juego_pausado = False  # Estado de pausa
     
@@ -544,7 +548,17 @@ def game(new_game=False, save_file=None):
                 juego_pausado = True
                 tiempo_inicio_pausa = pygame.time.get_ticks()
 
-            paused = pause(player, stats, rep, gestor, city_map.city_name)
+            # Preparar datos para GameStateManager
+            game_state_data = {
+                'sistema_clima': sistema_clima,
+                'notificador': notificador,
+                'tiempo_actual': tiempo_actual_segundos,
+                'tiempo_pausado': tiempo_total_pausado,
+                'tiempo_inicio': tiempo_inicio,
+                'day': save_data_to_use.day if save_data_to_use else 1
+            }
+            
+            paused = pause(player, stats, rep, gestor, city_map.city_name, game_state_data)
 
             if juego_pausado and tiempo_inicio_pausa is not None:
                 tiempo_total_pausado += pygame.time.get_ticks() - tiempo_inicio_pausa
@@ -671,16 +685,8 @@ def game(new_game=False, save_file=None):
         # Dibujar la posición actual del jugador
         player.draw(SCREEN)
         
-        # Opcional: Marcar el tile donde está el jugador
-        px, py = map_logic.get_player_tile_pos(player.rect)
-        tile_rect = pygame.Rect(
-            px * TILE_WIDTH - renderer.camera_x, 
-            py * TILE_HEIGHT - renderer.camera_y, 
-            TILE_WIDTH, TILE_HEIGHT
-        )
-        #pygame.draw.rect(SCREEN, (255, 0, 0, 128), tile_rect, 2)
-
         # --- HUD Actualizado ---
+        px, py = map_logic.get_player_tile_pos(player.rect)
         tiempo_total_segundos = 900
         tiempo_restante_segundos = max(0, tiempo_total_segundos - tiempo_actual_segundos)
         minutos = tiempo_restante_segundos // 60
@@ -688,7 +694,7 @@ def game(new_game=False, save_file=None):
         
         hud_lines = [
             f"Tiempo: {tiempo_actual_segundos}s | Restante: {minutos:02d}:{segundos:02d}",
-            f"Jugador: {player.name}",
+            f"Jugador: {player.name} | Score: {player.score.calcular_total()}",
             f"Resistencia: {player.stats.resistencia:.1f} | Estado: {player.stats.estado_actual()}",
             f"Reputacion: {player.reputation.valor} | Clima: {condicion}",
             f"Pedidos activos: {len(gestor)} | Pendientes: {notificador.obtener_pedidos_pendientes_count()}",
@@ -714,8 +720,18 @@ def game(new_game=False, save_file=None):
             if not juego_pausado:
                 juego_pausado = True
                 tiempo_inicio_pausa = pygame.time.get_ticks()
-                
-            paused = pause(player, stats, rep, gestor, city_map.city_name)
+            
+            # Preparar datos para GameStateManager
+            game_state_data = {
+                'sistema_clima': sistema_clima,
+                'notificador': notificador,
+                'tiempo_actual': tiempo_actual_segundos,
+                'tiempo_pausado': tiempo_total_pausado,
+                'tiempo_inicio': tiempo_inicio,
+                'day': save_data_to_use.day if save_data_to_use else 1
+            }
+            
+            paused = pause(player, stats, rep, gestor, city_map.city_name, game_state_data)
             
             # Reanudar el tiempo cuando se sale del menú de pausa
             if juego_pausado and tiempo_inicio_pausa is not None:
@@ -732,6 +748,7 @@ def game(new_game=False, save_file=None):
         # Actualizar la screen
         pygame.display.update()
 
+    
 def main_menu():
     pygame.display.set_caption("Courier Quest - Menú Principal")
     api = ManejadorAPI(cache_dir=CACHE_DIR)
@@ -787,9 +804,15 @@ def main_menu():
 
         pygame.display.update()
         
-def pause(player, stats, rep, gestor, original_caption):
+def pause(player, stats, rep, gestor, original_caption, game_state_data=None):
+    """
+    Función de pausa mejorada con soporte para GameStateManager
+    
+    Args:
+        game_state_data: Dict con todos los objetos necesarios para el guardado completo
+                        {'sistema_clima': ..., 'notificador': ..., 'tiempo_actual': ..., etc}
+    """
     pygame.display.set_caption("Courier Quest - Pausa")
-
 
     while True:
         SCREEN.blit(BG, (0, 0))
@@ -832,13 +855,32 @@ def pause(player, stats, rep, gestor, original_caption):
                     return True  # Retorna True para continuar el juego
                 if SAVE_BUTTON.checkForInput(MENU_MOUSE_POS):
                     try:
-                        save_data = player.exportar_estado(
-                            player_name="Jugador", 
-                            day=1,  # aquí puedes usar el día actual
-                            current_weather="clear"
-                        )
-                        save_id = save_data.save_to_file()
-                        print(f"Guardado con ID {save_id}")
+                        # Usar GameStateManager si los datos están disponibles
+                        if game_state_data:
+                            game_state_manager = GameStateManager()
+                            game_state = game_state_manager.create_game_state(
+                                player=player,
+                                stats=stats,
+                                reputation=rep,
+                                gestor_pedidos=gestor,
+                                sistema_clima=game_state_data['sistema_clima'],
+                                notificador=game_state_data['notificador'],
+                                tiempo_actual=game_state_data['tiempo_actual'],
+                                tiempo_pausado=game_state_data['tiempo_pausado'],
+                                tiempo_inicio=game_state_data['tiempo_inicio'],
+                                day=game_state_data.get('day', 1)
+                            )
+                            save_id = game_state_manager.save_game_state(game_state)
+
+                        else:
+                            # Fallback al método anterior (limitado)
+                            save_data = player.exportar_estado(
+                                player_name=player.name, 
+                                day=1,  # aquí puedes usar el día actual
+                                current_weather="clear"
+                            )
+                            save_id = save_data.save_to_file()
+
                     except Exception as e:
                         print(f"Error al guardar: {e}")
                     # Continuar en pausa después de guardar

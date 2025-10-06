@@ -2,7 +2,7 @@ import time
 import random
 from typing import Dict, Any, Optional
 
-_MULTIPLICADORES_BASE: Dict[str, float] = {
+_MULTIPLICADORES_BASE: Dict[str, float] = { #Considera las condiciones climáticas y los multiplicadores para el movimiento
     "clear": 1.00,
     "clouds": 0.98,
     "rain_light": 0.90,
@@ -14,7 +14,7 @@ _MULTIPLICADORES_BASE: Dict[str, float] = {
     "cold": 0.92,
 }
 
-_PENALIZACIONES_BASE: Dict[str, float] = {
+_PENALIZACIONES_BASE: Dict[str, float] = { #Considera cuáles condiciones existen y con cuáles penalizaciones
     "clear": 0.0,
     "clouds": 0.0,
     "rain_light": 0.1,
@@ -31,10 +31,10 @@ class SistemaClima:
 
     def __init__(self, datos_clima: Any, semilla: Optional[int] = None):
         if semilla is not None:
-            random.seed(semilla)
+            random.seed(semilla) #Indicador del random
 
         self.datos_clima = datos_clima
-        inicial_cond = getattr(datos_clima.initial, "condition", "clear")
+        inicial_cond = getattr(datos_clima.initial, "condition", "clear") #Aplica condiciones iniciales con su respectiva intensidad
         inicial_int = getattr(datos_clima.initial, "intensity", 1.0)
 
         self.condicion_actual: str = str(inicial_cond)
@@ -52,10 +52,10 @@ class SistemaClima:
         self.intensidad_destino: float = self.intensidad_actual
 
         self.proximo_cambio: float = time.time() + self._intervalo_siguiente()
-    def _intervalo_siguiente(self) -> float:
+    def _intervalo_siguiente(self) -> float: #Elige un número entre 45 y 60
         return float(random.randint(45, 60))
 
-    def _duracion_transicion(self) -> float:
+    def _duracion_transicion(self) -> float: #Se elige el periodo de transición
         return random.uniform(3.0, 5.0)
     def _proximo_estado(self, actual: str) -> str:
         transiciones = getattr(self.datos_clima, "transition", {}).get(actual, {})
@@ -63,9 +63,9 @@ class SistemaClima:
             return actual
         estados = list(transiciones.keys())
         probabilidades = list(transiciones.values())
-        return random.choices(estados, weights=probabilidades, k=1)[0]
+        return random.choices(estados, weights=probabilidades, k=1)[0] #A partir de los estados y la probabilidad, se elije de forma aleatoria el próximo estado.
 
-    def actualizar(self) -> None:
+    def actualizar(self) -> None: #Se actualiza la condición y la respectiva intensidad.
         ahora = time.time()
         if self.en_transicion:
             progreso = min(1.0, (ahora - self.transicion_inicio) / self.transicion_duracion)
@@ -81,16 +81,16 @@ class SistemaClima:
             return
 
         if ahora >= self.proximo_cambio:
-            nuevo = self._proximo_estado(self.condicion_actual)
-            if nuevo == self.condicion_actual:
+            nuevo = self._proximo_estado(self.condicion_actual) #Si el tiempo todavía alcanza con respecto al próximo intervalo, se asigna a una variable el próximo estado
+            if nuevo == self.condicion_actual: #Si la condición actual coincide con la nueva, se modifica la intensidad por variaciones menores.
                 self.intensidad_destino = max(
-                    0.0, min(1.0, self.intensidad_actual + random.uniform(-0.3, 0.3))
+                    0.0, min(1.0, self.intensidad_actual + random.uniform(-0.3, 0.3)) 
                 )
                 self.en_transicion = True
                 self.transicion_inicio = ahora
                 self.transicion_duracion = self._duracion_transicion()
                 self.intensidad_origen = self.intensidad_actual
-            else:
+            else: #Si no, se hace la transición según la de origen hacia la de destino
                 self.en_transicion = True
                 self.transicion_inicio = ahora
                 self.transicion_duracion = self._duracion_transicion()
@@ -112,7 +112,7 @@ class SistemaClima:
         return self.intensidad_actual
 
     def obtener_efectos(self) -> Dict[str, float]:
-        """Devuelve efectos interpolados (factor velocidad y penalización resistencia)."""
+        #Devuelve efectos interpolados (factor velocidad y penalización resistencia)
         if self.en_transicion:
             progreso = min(1.0, (time.time() - self.transicion_inicio) / self.transicion_duracion)
             mult_eff = (1 - progreso) * self.mult_origen + progreso * self.mult_destino

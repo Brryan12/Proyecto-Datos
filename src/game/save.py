@@ -24,7 +24,7 @@ class Save(BaseModel):
         file_path = SAVE_DIR / f"{save_id}.json"
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(self.model_dump(), f, indent=4, ensure_ascii=False)
-        print(f"[SAVE] Juego guardado en {file_path}")
+
         return save_id
 
     @classmethod 

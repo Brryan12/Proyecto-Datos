@@ -38,7 +38,7 @@ class Stats:
         self._exhaust_lock: bool = False
 
     # ---------------- Consumo ----------------
-    def consumo_por_celda_total(self, peso_total: float, condicion_clima: str) -> float:
+    def consumo_por_celda_total(self, peso_total: float, condicion_clima: str) -> float: #Calcula el peso de cada celda para moverse, considerando el clima y los pesos que maneje el player
         base = self.consumo_por_celda
         peso_extra = 0.0
         if peso_total > 3.0:
@@ -46,7 +46,7 @@ class Stats:
         clima_extra = self.extras_clima.get(condicion_clima, 0.0)
         return base + peso_extra + clima_extra
 
-    def consume_por_mover(
+    def consume_por_mover( #calcula la cantidad de energía que debe gastarse al moverse
         self, celdas: float = 1.0, peso_total: float = 0.0, condicion_clima: str = "clear"
     ) -> float:
 
@@ -61,7 +61,7 @@ class Stats:
             self.resistencia = 0.0
             self._exhaust_lock = True
 
-    def recupera(self, segundos: float, rest_point: bool = False) -> float:
+    def recupera(self, segundos: float, rest_point: bool = False) -> float: #En caso de no moverse, recupera la energia del player
         rate = self.recuperacion_rate_rest_point if rest_point else self.recuperacion_rate_idle
         cant = rate * max(0.0, segundos)
         self.resistencia += cant
@@ -71,7 +71,7 @@ class Stats:
             self._exhaust_lock = False
         return cant
 
-    def estado_actual(self) -> Literal["normal", "cansado", "exhausto"]:
+    def estado_actual(self) -> Literal["normal", "cansado", "exhausto"]: #Determina el estado actual del player con respecto a la energía restante
         if self.resistencia <= 0.0:
             return "exhausto"
         elif 10.0 <= self.resistencia <= self.recuperacion_threshold:
@@ -81,7 +81,7 @@ class Stats:
         else:  # resistencia entre 0 y 10
             return "exhausto"
 
-    def factor_velocidad(self) -> float:
+    def factor_velocidad(self) -> float: #Según el estado, la velocidad del player se ve alterada
         estado = self.estado_actual()
         if estado == "normal":
             return 1.0
@@ -89,12 +89,13 @@ class Stats:
             return 0.8
         return 0.0
 
-    def puede_moverse(self) -> bool:
+    def puede_moverse(self) -> bool: #Determina si se puede mover el jugador
         if self._exhaust_lock:
             return self.resistencia >= self.recuperacion_threshold
         return self.resistencia > 0.0
 
-    def to_dict(self) -> dict:
+    #Ambos métodos se encargan de guardar o cargar los datos que se calculen producto de la resistencia restante, el estado y el movimiento del player.
+    def to_dict(self) -> dict: 
         return {
             "resistencia_max": self.resistencia_max,
             "resistencia": self.resistencia,

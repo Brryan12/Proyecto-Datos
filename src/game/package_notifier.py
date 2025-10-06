@@ -22,7 +22,7 @@ class NotificadorPedidos:
     def agregar_pedidos_iniciales(self, pedidos: List[PedidoSolicitud]):
         """Agrega todos los pedidos iniciales a la lista de pendientes"""
         self.pedidos_pendientes.extend(pedidos)
-        print(f"Notificador: {len(pedidos)} pedidos cargados para notificación")
+
         
     def actualizar(self, tiempo_actual_segundos: int):
         """Verifica si hay pedidos que deben mostrarse según su release_time"""
@@ -44,7 +44,7 @@ class NotificadorPedidos:
         """Activa la notificación para un pedido específico"""
         self.activo = True
         self.pedido_actual = pedido
-        print(f"Notificador: Mostrando pedido {pedido.id} (release_time: {pedido.release_time}s)")
+
         
     def ocultar_pedido(self):
         """Desactiva la notificación actual"""
@@ -88,12 +88,12 @@ class NotificadorPedidos:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_z:  # Aceptar pedido
                 gestor_pedidos.agregar_pedido(self.pedido_actual)
-                print(f"Pedido {self.pedido_actual.id} ACEPTADO y agregado al gestor")
+
                 self.ocultar_pedido()
                 return True
                 
             elif event.key == pygame.K_x:  # Rechazar pedido
-                print(f"Pedido {self.pedido_actual.id} RECHAZADO")
+
                 self.ocultar_pedido()
                 return True
                 
