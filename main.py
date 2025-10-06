@@ -345,30 +345,7 @@ def game(new_game=False, save_file=None):
         tiene_paquete = False
         pedido_actual = None
 
-    def mostrar_boton_recoger(pedido):
-        fuente = pygame.font.Font(None, 32)
-        texto = fuente.render("Recoger paquete", True, (255, 255, 255))
-        rect = texto.get_rect(center=(200, 550))
-        pygame.draw.rect(SCREEN, (50, 150, 50), rect.inflate(20, 10))
-        SCREEN.blit(texto, rect)
-        
-        mouse_pos = pygame.mouse.get_pos()
-        if rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]:
-            recoger_paquete(pedido)
 
-    def mostrar_boton_entregar(pedido):
-        fuente = pygame.font.Font(None, 32)
-        texto = fuente.render("Entregar paquete", True, (255, 255, 255))
-        rect = texto.get_rect(center=(200, 550))
-        pygame.draw.rect(SCREEN, (150, 100, 30), rect.inflate(20, 10))
-        SCREEN.blit(texto, rect)
-    
-    mouse_pos = pygame.mouse.get_pos()
-    fuente = pygame.font.Font(None, 32)
-    texto = fuente.render("Recoger paquete", True, (255, 255, 255))
-    rect = texto.get_rect(center=(200, 550))
-    if rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]:
-        entregar_paquete(pedido)
 
     # --- cargar mapa ---
     try:
@@ -497,54 +474,18 @@ def game(new_game=False, save_file=None):
         if not juego_pausado:
             notificador.actualizar(tiempo_actual_segundos)
         
-        print(player.current_tile_info)
-
-        # Dibuja casillas pickup y dropoff
+        # Dibujar casillas de pickup y dropoff
         for pedido in pedidos:
-            # Dibuja pickup (verde)
+            # Dibujar pickup (verde)
             px, py = pedido.pickup
             pygame.draw.rect(SCREEN, (0, 200, 0), (px * 20, py * 20, 18, 18))
 
-            # Dibuja dropoff (rojo)
+            # Dibujar dropoff (rojo)
             dx, dy = pedido.dropoff
             pygame.draw.rect(SCREEN, (200, 0, 0), (dx * 20, dy * 20, 18, 18))
 
-            # Verifica si el jugador está adyacente a pickup
-            if es_adyacente((px,py), pedido.pickup) and not pedido.recogido:
-                mostrar_boton_recoger(pedido)
-
-            # Verifica si el jugador está adyacente a dropoff (solo si ya tiene el paquete)
-            if es_adyacente((px, py), pedido.dropoff) and pedido.recogido:
-                mostrar_boton_entregar(pedido)
-
-            # Mostrar información de release_time de cada pedido
-            for pedido in pedidos:
-                # Si el jugador está en la casilla de recogida
-                if (px, py) == tuple(pedido.pickup) and not tiene_paquete:
-                    mostrar_boton_recoger(pedido)
-                    print(f"Pedido {pedido.id}: release_time = {pedido.release_time}s")
-
-                # Si está en la casilla de entrega
-                elif pedido_actual and (px, py) == tuple(pedido_actual.dropoff) and tiene_paquete:
-                    mostrar_boton_entregar(pedido_actual)
 
 
-        # Mostrar botón si está en pickup
-        boton_rect = None
-        if not tiene_paquete:
-            for pedido in pedidos:
-                if (player.x, player.y) == tuple(pedido.pickup):
-                    boton_rect = dibujar_boton("Recoger paquete", "#d7fcd4", 550)
-                    mouse_pos = pygame.mouse.get_pos()
-                    if boton_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]:
-                        recoger_paquete(pedido)
-        else:
-            # Si ya tiene paquete, mostrar botón en dropoff
-            if pedido_actual and (player.x, player.y) == tuple(pedido_actual.dropoff):
-                boton_rect = dibujar_boton("Entregar paquete", "#d7fcd4", 550)
-                mouse_pos = pygame.mouse.get_pos()
-                if boton_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]:
-                    entregar_paquete(pedido_actual)
 
         
         # Procesar eventos
@@ -676,6 +617,22 @@ def game(new_game=False, save_file=None):
                 # Solo recuperar resistencia cuando no esté pausado
                 if not juego_pausado:
                     player.stats.recupera(segundos=dt, rest_point=False)
+            
+            # Interacción con paquetes usando teclas N y M (posiciones adyacentes)
+            if not tiene_paquete:
+                # Buscar si está adyacente a una posición de pickup
+                for pedido in pedidos:
+                    if es_adyacente((player.x, player.y), tuple(pedido.pickup)):
+                        # Detectar tecla N para recoger
+                        if keys[pygame.K_n]:
+                            recoger_paquete(pedido)
+                            break
+            else:
+                # Si ya tiene paquete, verificar si está adyacente al dropoff
+                if pedido_actual and es_adyacente((player.x, player.y), tuple(pedido_actual.dropoff)):
+                    # Detectar tecla M para entregar
+                    if keys[pygame.K_m]:
+                        entregar_paquete(pedido_actual)
     
 
         # dibujar
@@ -723,6 +680,23 @@ def game(new_game=False, save_file=None):
         for i, line in enumerate(hud_lines):
             hud_surface = get_font(8).render(line, True, (255, 255, 255))
             SCREEN.blit(hud_surface, (MAP_WIDTH + 10, 8 + i * 20))
+
+        # Mostrar información de interacción con paquetes (posiciones adyacentes)
+        interaccion_y = 550
+        if not tiene_paquete:
+            # Verificar si está adyacente a una posición de pickup
+            for pedido in pedidos:
+                if es_adyacente((player.x, player.y), tuple(pedido.pickup)):
+                    font = get_font(10)
+                    texto = font.render("Presiona N para recoger paquete", True, (255, 255, 0))
+                    SCREEN.blit(texto, (MAP_WIDTH + 10, interaccion_y))
+                    break
+        else:
+            # Si ya tiene paquete, verificar si está adyacente al dropoff
+            if pedido_actual and es_adyacente((player.x, player.y), tuple(pedido_actual.dropoff)):
+                font = get_font(10)
+                texto = font.render("Presiona M para entregar paquete", True, (255, 255, 0))
+                SCREEN.blit(texto, (MAP_WIDTH + 10, interaccion_y))
 
         # DIBUJAR NOTIFICACIÓN (si está activa) - Esto va al final
         notificador.dibujar(SCREEN)
