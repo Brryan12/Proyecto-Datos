@@ -1,7 +1,7 @@
 class Button(): #clase de servicio para el menú principal, tanto para jugar como guardado y salida.
 	def __init__(self, image, pos, text_input, font, base_color, hovering_color):
-		self.image = image
-		self.x_pos = pos[0]
+		self.image = image #en caos de usar imagen, se carga
+		self.x_pos = pos[0] 
 		self.y_pos = pos[1]
 		self.font = font
 		self.base_color, self.hovering_color = base_color, hovering_color
