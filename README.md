@@ -1,7 +1,6 @@
 # Proyecto de Estructuras de Datos - 28 Septiembre
 [PDF con las instrucciones del proyecto](./Primer%20proyecto%20-%20Courier%20Quest.pdf)   
 [Drive](https://drive.google.com/drive/folders/10zUqsZ6rrITlaTLE1Yi4tp2cu86K3-6M)   
-[UML](https://lucid.app/lucidchart/5418efeb-3776-4e5b-9de7-650dbf1bcc1b/edit?view_items=cPPJUvOHjLRL&invitationId=inv_9eb93256-b1fc-494b-a0b8-dc432e27e66f)
 
 ## Integrantes del Equipo
 - Bryan Aguero Mata    
@@ -12,6 +11,23 @@
 Primer proyecto de Estructuras de Datos. 
 
 ## Objetivos
-- ****
-- ****
-- ****
+Implementar	y	justificar	el	uso	de	estructuras	de	datos	lineales
+Practicar	el	manejo	de	archivos	en	múltiples	formatos (JSON,	texto,	binario)
+Aplicar	algoritmos	de	ordenamiento en	escenarios	reales
+Desarrollar	un	videojuego	con	Python	y	Arcade/Pygame/cocos2d
+Integrar	un	API	real y	gestionar	caché	para	trabajar	en	modo	offline
+Diseñar	un	bucle	de	juego	consistente	con	 reglas	cuantificables	(clima,	 reputación,	
+resistencia)
+
+Instrucciones generales:
+Se debe instalar las siguientes librerías:
+- Requests
+- Pygame
+- Pydantic
+
+Se deben correr estos comandos en consola:
+pip install requests
+pip install pydantic
+pip install pygame
+
+
