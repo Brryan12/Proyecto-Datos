@@ -261,6 +261,12 @@ def show_no_saves_message():
         
         pygame.display.update()
 
+def es_adyacente(pos1, pos2):
+    """Devuelve True si las posiciones están a una casilla de distancia (adyacentes)."""
+    x1, y1 = pos1
+    x2, y2 = pos2
+    return (abs(x1 - x2) == 1 and y1 == y2) or (abs(y1 - y2) == 1 and x1 == x2)
+
 MAP_WIDTH = 605
 MAP_HEIGHT = 605
 HUD_WIDTH = 300
@@ -310,7 +316,46 @@ def game(new_game=False, save_file=None):
     TILE_WIDTH = 20
     TILE_HEIGHT = 20
 
+    pedido_actual = None
+    tiene_paquete = False
 
+    def recoger_paquete(pedido):
+        nonlocal pedido_actual, tiene_paquete
+        pedido_actual = pedido
+        tiene_paquete = True
+        print(f"Paquete {pedido.id} recogido en {pedido.pickup}")
+
+    def entregar_paquete(pedido):
+        nonlocal pedido_actual, tiene_paquete, player
+        print(f"Paquete {pedido.id} entregado en {pedido.dropoff}")
+        player.score += pedido.payout
+        tiene_paquete = False
+        pedido_actual = None
+
+    def mostrar_boton_recoger(pedido):
+        fuente = pygame.font.Font(None, 32)
+        texto = fuente.render("Recoger paquete", True, (255, 255, 255))
+        rect = texto.get_rect(center=(200, 550))
+        pygame.draw.rect(SCREEN, (50, 150, 50), rect.inflate(20, 10))
+        SCREEN.blit(texto, rect)
+        
+        mouse_pos = pygame.mouse.get_pos()
+        if rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]:
+            recoger_paquete(pedido)
+
+    def mostrar_boton_entregar(pedido):
+        fuente = pygame.font.Font(None, 32)
+        texto = fuente.render("Entregar paquete", True, (255, 255, 255))
+        rect = texto.get_rect(center=(200, 550))
+        pygame.draw.rect(SCREEN, (150, 100, 30), rect.inflate(20, 10))
+        SCREEN.blit(texto, rect)
+    
+    mouse_pos = pygame.mouse.get_pos()
+    fuente = pygame.font.Font(None, 32)
+    texto = fuente.render("Recoger paquete", True, (255, 255, 255))
+    rect = texto.get_rect(center=(200, 550))
+    if rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]:
+        entregar_paquete(pedido)
 
     # --- cargar mapa ---
     try:
@@ -339,10 +384,6 @@ def game(new_game=False, save_file=None):
         # Usa cache si existe; si quieres forzar descarga pon force_update=True
         pedidos = servicio_pedidos.cargar_pedidos(force_update=False)
         print(f"Pedidos cargados desde cache/API: {len(pedidos)}")
-        
-        # Mostrar información de release_time de cada pedido
-        for pedido in pedidos:
-            print(f"Pedido {pedido.id}: release_time = {pedido.release_time}s")
             
     except FileNotFoundError as fnf:
         print("No se encontró jobs.json en cache y no se pudo descargar:", fnf)
@@ -405,6 +446,18 @@ def game(new_game=False, save_file=None):
     # --- loop principal ---
     running = True
     tiempo_inicio = pygame.time.get_ticks()
+
+    # Mostrar información de release_time de cada pedido
+    for pedido in pedidos:
+            # Si el jugador está en la casilla de recogida
+        if (px, py) == tuple(pedido.pickup) and not tiene_paquete:
+            mostrar_boton_recoger(pedido)
+            print(f"Pedido {pedido.id}: release_time = {pedido.release_time}s")
+
+        # Si está en la casilla de entrega
+        elif pedido_actual and (px, py) == tuple(pedido_actual.dropoff) and tiene_paquete:
+            mostrar_boton_entregar(pedido_actual)
+
     
     # Variables para controlar el tiempo pausado
     tiempo_total_pausado = 0  # Tiempo total que ha estado pausado el juego
@@ -441,6 +494,42 @@ def game(new_game=False, save_file=None):
             notificador.actualizar(tiempo_actual_segundos)
         
         print(player.current_tile_info)
+
+        # Dibuja casillas pickup y dropoff
+        for pedido in pedidos:
+            # Dibuja pickup (verde)
+            px, py = pedido.pickup
+            pygame.draw.rect(SCREEN, (0, 200, 0), (px * 20, py * 20, 18, 18))
+
+            # Dibuja dropoff (rojo)
+            dx, dy = pedido.dropoff
+            pygame.draw.rect(SCREEN, (200, 0, 0), (dx * 20, dy * 20, 18, 18))
+
+            # Verifica si el jugador está adyacente a pickup
+            if es_adyacente(player_position, pedido.pickup) and not pedido.recogido:
+                mostrar_boton_recoger(pedido)
+
+            # Verifica si el jugador está adyacente a dropoff (solo si ya tiene el paquete)
+            if es_adyacente(player_position, pedido.dropoff) and pedido.recogido:
+                mostrar_boton_entregar(pedido)
+
+        # Mostrar botón si está en pickup
+        boton_rect = None
+        if not tiene_paquete:
+            for pedido in pedidos:
+                if (player.x, player.y) == tuple(pedido.pickup):
+                    boton_rect = dibujar_boton("Recoger paquete", "#d7fcd4", 550)
+                    mouse_pos = pygame.mouse.get_pos()
+                    if boton_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]:
+                        recoger_paquete(pedido)
+        else:
+            # Si ya tiene paquete, mostrar botón en dropoff
+            if pedido_actual and (player.x, player.y) == tuple(pedido_actual.dropoff):
+                boton_rect = dibujar_boton("Entregar paquete", "#d7fcd4", 550)
+                mouse_pos = pygame.mouse.get_pos()
+                if boton_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]:
+                    entregar_paquete(pedido_actual)
+
         
         # Procesar eventos
         event_handler = Events(player, gestor, notificador, undo_system, inventario)
@@ -640,19 +729,9 @@ def game(new_game=False, save_file=None):
         # Dibujar el inventario si está activo
         inventario.dibujar_inventario(SCREEN)
         
-        # Actualizar la pantalla
+        # Actualizar la screen
         pygame.display.update()
 
-# Incrementar día y guardar
-    current_day = save_data.day + 1 
-    new_save = player.exportar_estado( 
-        player_name=player_name,
-        day=current_day,
-        current_weather=clima
-        ) 
-    game_id = new_save.save_to_file() # guarda y devuelve el ID único
-    save_data = new_save # actualizar referencia para siguiente tick
-    
 def main_menu():
     pygame.display.set_caption("Courier Quest - Menú Principal")
     api = ManejadorAPI(cache_dir=CACHE_DIR)
