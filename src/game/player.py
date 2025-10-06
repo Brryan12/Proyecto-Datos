@@ -205,7 +205,7 @@ class Player(pygame.sprite.Sprite):
         player_name=player_name if player_name else "Jugador",
         day=day if day else 1,
         city_name=city_name if city_name is not None else "TigerCity",
-        score=getattr(self.stats, "score", 0),
+        score=self.stats if score is not None else 0,
         reputation=self.reputation.valor,
         position=(int(self.x), int(self.y)),
         completed_jobs=[],  # puedes llenar si tienes jobs completados

@@ -1,0 +1,13 @@
+{
+    "player_name": "Jugador",
+    "city_name": "TigerCity",
+    "day": 1,
+    "score": 0,
+    "reputation": 70.0,
+    "position": [
+        332,
+        263
+    ],
+    "completed_jobs": [],
+    "current_weather": "clear"
+}
