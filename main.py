@@ -329,21 +329,7 @@ def game(new_game=False, save_file=None):
     TILE_WIDTH = 20
     TILE_HEIGHT = 20
 
-    pedido_actual = None
-    tiene_paquete = False
 
-    def recoger_paquete(pedido):
-        nonlocal pedido_actual, tiene_paquete
-        pedido_actual = pedido
-        tiene_paquete = True
-        print(f"Paquete {pedido.id} recogido en {pedido.pickup}")
-
-    def entregar_paquete(pedido):
-        nonlocal pedido_actual, tiene_paquete, player
-        print(f"Paquete {pedido.id} entregado en {pedido.dropoff}")
-        player.score += pedido.payout
-        tiene_paquete = False
-        pedido_actual = None
 
 
 
@@ -417,6 +403,42 @@ def game(new_game=False, save_file=None):
     # --- Inicializar inventario ---
     inventario = InventarioPedidos(max_weight=10, screen_width=WINDOW_WIDTH, screen_height=WINDOW_HEIGHT)
 
+    # Listas para rastrear el estado de los pedidos
+    pedidos_recogidos = []  # Pedidos que han sido recogidos del mapa
+    pedidos_entregados = []  # Pedidos que han sido completamente entregados
+
+    def recoger_paquete(pedido):
+        """Recoge un paquete del mapa y lo agrega al inventario"""
+        if inventario.can_accept(pedido):
+            # Agregar al inventario
+            success = inventario.accept_order(pedido)
+            if success:
+                # Marcar como recogido para que no se dibuje en el mapa
+                if pedido not in pedidos_recogidos:
+                    pedidos_recogidos.append(pedido)
+                print(f"Paquete {pedido.id} recogido y agregado al inventario")
+            else:
+                print(f"No se pudo agregar el paquete {pedido.id} al inventario")
+        else:
+            print(f"No hay espacio en el inventario para el paquete {pedido.id}")
+
+    def entregar_paquete(pedido_a_entregar):
+        """Entrega un paquete del inventario"""
+        # Verificar que el paquete esté en el inventario
+        pedidos_en_inventario = inventario.get_orders()
+        
+        if pedido_a_entregar in pedidos_en_inventario:
+            # Remover del inventario
+            inventario.reject_order(pedido_a_entregar)
+            # Agregar puntuación
+            player.score.agregar_ingreso(pedido_a_entregar.payout)
+            # Marcar como entregado para que el dropoff desaparezca
+            if pedido_a_entregar not in pedidos_entregados:
+                pedidos_entregados.append(pedido_a_entregar)
+            print(f"Paquete {pedido_a_entregar.id} entregado exitosamente. Pago: ${pedido_a_entregar.payout}")
+        else:
+            print(f"No tienes el paquete {pedido_a_entregar.id} en tu inventario")
+
     # --- Restaurar estado completo si se cargó una partida completa ---
     if is_full_save and loaded_full_state:
         game_state_manager = GameStateManager()
@@ -476,20 +498,38 @@ def game(new_game=False, save_file=None):
         
         # Dibujar casillas de pickup y dropoff
         for pedido in pedidos:
-            # Dibujar pickup (verde)
-            px, py = pedido.pickup
-            pygame.draw.rect(SCREEN, (0, 200, 0), (px * 20, py * 20, 18, 18))
-
-            # Dibujar dropoff (rojo)
-            dx, dy = pedido.dropoff
-            pygame.draw.rect(SCREEN, (200, 0, 0), (dx * 20, dy * 20, 18, 18))
+            # Dibujar pickup (verde) solo si no ha sido recogido
+            if pedido not in pedidos_recogidos:
+                px, py = pedido.pickup
+                pygame.draw.rect(SCREEN, (0, 200, 0), (px * 20, py * 20, 18, 18))
+        
+        # Dibujar dropoffs (rojo) solo para paquetes que están en el inventario
+        pedidos_en_inventario = inventario.get_orders()
+        for pedido in pedidos_en_inventario:
+            if pedido not in pedidos_entregados:
+                dx, dy = pedido.dropoff
+                pygame.draw.rect(SCREEN, (200, 0, 0), (dx * 20, dy * 20, 18, 18))
 
 
 
 
         
         # Procesar eventos
-        event_handler = Events(player, gestor, notificador, undo_system, inventario)
+        pedidos_data = {
+            'pedidos': pedidos,
+            'pedidos_recogidos': pedidos_recogidos,
+            'pedidos_entregados': pedidos_entregados,
+            'es_adyacente_func': es_adyacente
+        }
+        event_handler = Events(
+            player, gestor, notificador, undo_system, inventario,
+            recoger_callback=recoger_paquete,
+            entregar_callback=entregar_paquete,
+            pedidos_data=pedidos_data,
+            map_logic=map_logic,
+            sistema_clima=sistema_clima,
+            tiempo_actual=lambda: tiempo_actual_segundos
+        )
         accion = event_handler.procesar_eventos()
 
         if accion == "salir":
@@ -529,110 +569,13 @@ def game(new_game=False, save_file=None):
         # Obtener teclas presionadas (siempre disponible para ESC y otros controles)
         keys = pygame.key.get_pressed()
 
-        # --- Lógica del juego (solo si no hay notificación activa) ---
-        if not notificador.activo:
-            # actualizar clima (solo cuando no esté pausado)
-            if not juego_pausado:
-                sistema_clima.actualizar()
-                # Refrescar datos después de la actualización
-                condicion = sistema_clima.obtener_condicion()
-                intensidad = sistema_clima.obtener_intensidad()
-                efectos = sistema_clima.obtener_efectos()
-
-            # mover jugador
-            moved = False
-            px, py = map_logic.get_player_tile_pos(player.rect)
-            new_x, new_y = px, py
-
-            if keys[pygame.K_UP] or keys[pygame.K_w]:
-                new_y -= 1
-                if not map_logic.is_blocked(new_x, new_y):
-                    # Obtener información del tile para surface_weight
-                    tile_info = map_logic.get_tile_info(new_x, new_y)
-                    
-                    # Obtener factor de clima desde sistema_clima
-                    clima_factor = efectos["factor_velocidad"]
-                    
-                    # Calcular peso del inventario
-                    peso_inventario = gestor.inventory.current_weight()
-                    
-                    # Mover al jugador con todos los factores
-                    player.mover(
-                        direccion="up", 
-                        peso_total=peso_inventario,
-                        clima=condicion, 
-                        clima_factor=clima_factor,
-                        tile_info=tile_info,
-                    )
-                    moved = True
-            elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
-                new_y += 1
-                if not map_logic.is_blocked(new_x, new_y):
-                    tile_info = map_logic.get_tile_info(new_x, new_y)
-                    clima_factor = efectos["factor_velocidad"]
-                    peso_inventario = gestor.inventory.current_weight()
-                    player.mover(
-                        direccion="down", 
-                        peso_total=peso_inventario,
-                        clima=condicion, 
-                        clima_factor=clima_factor,
-                        tile_info=tile_info,
-                    )
-                    moved = True
-            elif keys[pygame.K_LEFT] or keys[pygame.K_a]:
-                new_x -= 1
-                if not map_logic.is_blocked(new_x, new_y):
-                    tile_info = map_logic.get_tile_info(new_x, new_y)
-                    clima_factor = efectos["factor_velocidad"]
-                    peso_inventario = gestor.inventory.current_weight()
-                    player.mover(
-                        direccion="izq", 
-                        peso_total=peso_inventario,
-                        clima=condicion, 
-                        clima_factor=clima_factor,
-                        tile_info=tile_info,
-                    )
-                    moved = True
-            elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-                new_x += 1
-                if not map_logic.is_blocked(new_x, new_y):
-                    tile_info = map_logic.get_tile_info(new_x, new_y)
-                    clima_factor = efectos["factor_velocidad"]
-                    peso_inventario = gestor.inventory.current_weight()
-                    player.mover(
-                        direccion="der", 
-                        peso_total=peso_inventario,
-                        clima=condicion, 
-                        clima_factor=clima_factor,
-                        tile_info=tile_info,
-                    )
-                    moved = True
-
-            if moved:
-                # Guardar estado después de un movimiento exitoso
-                pedidos_activos_ids = [p.id for p in gestor.ver_pedidos()]
-                undo_system.save_state(player, tiempo_actual_segundos, pedidos_activos_ids)
-                
-            if not moved:
-                # Solo recuperar resistencia cuando no esté pausado
-                if not juego_pausado:
-                    player.stats.recupera(segundos=dt, rest_point=False)
+        # --- Lógica del juego ---
+        # Actualizar clima (solo cuando no esté pausado)
+        if not juego_pausado:
+            sistema_clima.actualizar()
             
-            # Interacción con paquetes usando teclas N y M (posiciones adyacentes)
-            if not tiene_paquete:
-                # Buscar si está adyacente a una posición de pickup
-                for pedido in pedidos:
-                    if es_adyacente((player.x, player.y), tuple(pedido.pickup)):
-                        # Detectar tecla N para recoger
-                        if keys[pygame.K_n]:
-                            recoger_paquete(pedido)
-                            break
-            else:
-                # Si ya tiene paquete, verificar si está adyacente al dropoff
-                if pedido_actual and es_adyacente((player.x, player.y), tuple(pedido_actual.dropoff)):
-                    # Detectar tecla M para entregar
-                    if keys[pygame.K_m]:
-                        entregar_paquete(pedido_actual)
+        # Manejar movimiento del jugador usando el sistema integrado
+        moved = event_handler.manejar_movimiento(keys, dt)
     
 
         # dibujar
@@ -683,25 +626,37 @@ def game(new_game=False, save_file=None):
 
         # Mostrar información de interacción con paquetes (posiciones adyacentes)
         interaccion_y = 550
-        if not tiene_paquete:
-            # Verificar si está adyacente a una posición de pickup
-            for pedido in pedidos:
-                if es_adyacente((player.x, player.y), tuple(pedido.pickup)):
-                    font = get_font(10)
-                    texto = font.render("Presiona N para recoger paquete", True, (255, 255, 0))
-                    SCREEN.blit(texto, (MAP_WIDTH + 10, interaccion_y))
-                    break
-        else:
-            # Si ya tiene paquete, verificar si está adyacente al dropoff
-            if pedido_actual and es_adyacente((player.x, player.y), tuple(pedido_actual.dropoff)):
-                font = get_font(10)
-                texto = font.render("Presiona M para entregar paquete", True, (255, 255, 0))
-                SCREEN.blit(texto, (MAP_WIDTH + 10, interaccion_y))
+        
+        # Verificar si puede recoger algún paquete
+        puede_recoger = False
+        for pedido in pedidos:
+            if pedido not in pedidos_recogidos and es_adyacente((player.x, player.y), tuple(pedido.pickup)):
+                puede_recoger = True
+                break
+        
+        if puede_recoger:
+            font = get_font(10)
+            texto = font.render("Presiona N para recoger paquete", True, (255, 255, 0))
+            SCREEN.blit(texto, (MAP_WIDTH + 10, interaccion_y))
+        
+        # Verificar si puede entregar algún paquete
+        puede_entregar = False
+        pedidos_en_inventario = inventario.get_orders()
+        for pedido in pedidos_en_inventario:
+            if pedido not in pedidos_entregados and es_adyacente((player.x, player.y), tuple(pedido.dropoff)):
+                puede_entregar = True
+                break
+        
+        if puede_entregar:
+            font = get_font(10)
+            texto = font.render("Presiona M para entregar paquete", True, (255, 255, 0))
+            SCREEN.blit(texto, (MAP_WIDTH + 10, interaccion_y + 20))
 
         # DIBUJAR NOTIFICACIÓN (si está activa) - Esto va al final
         notificador.dibujar(SCREEN)
-            
-        if keys and keys[pygame.K_ESCAPE]:
+        
+        # Manejar pausa si se presionó ESC
+        if accion == "pausa":
             # Pausar el tiempo cuando se entra al menú de pausa
             if not juego_pausado:
                 juego_pausado = True
