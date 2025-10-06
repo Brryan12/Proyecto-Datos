@@ -19,6 +19,7 @@ class ManejadorAPI:
         self.default_duration = default_duration
 
     # ===================== CLIMA =====================
+    #Carga la información del clima a clima data.
     def get_weather(self, city: str, mode: str = "seed", save: bool = True) -> ClimaData:
         url = f"{self.BASE_URL}/city/weather"
         params = {"city": city, "mode": mode}
@@ -34,6 +35,7 @@ class ManejadorAPI:
 
         return clima
 
+    #Guarda los archivos en formato JSON
     def save_to_json(self, data, filename: str):
         filepath = self.cache_dir / filename
         with open(filepath, "w", encoding="utf-8") as f:
@@ -43,13 +45,15 @@ class ManejadorAPI:
                 json.dump(data.dict(), f, indent=4, ensure_ascii=False)
             else:
                 json.dump(data, f, indent=4, ensure_ascii=False)
-        print(f"✅ Saved JSON to {filepath}")
+        print(f"Saved JSON to {filepath}")
 
+    #Carga los archivos en formato JSON
     def load_from_json(self, filename: str):
         filepath = self.cache_dir / filename
         with open(filepath, "r", encoding="utf-8") as f:
             return json.load(f)
 
+    #Guarda los archivos en formato CSV
     def save_to_csv(self, clima: ClimaData, filename: str):
         filepath = self.cache_dir / filename
         with open(filepath, "w", newline="", encoding="utf-8") as f:
@@ -58,7 +62,7 @@ class ManejadorAPI:
             for from_cond, to_map in clima.transition.items():
                 for to_cond, prob in to_map.items():
                     writer.writerow([from_cond, to_cond, prob])
-        print(f"✅ Weather transitions saved to {filepath}")
+        print(f"Transiciones de clima salvados en {filepath}")
 
     # ===================== PEDIDOS =====================
     def get_jobs(self, save: bool = True) -> List[PedidoSolicitud]:
@@ -67,7 +71,7 @@ class ManejadorAPI:
         response.raise_for_status()
         payload = response.json()
 
-        # Convertir jobs ignorando deadline
+        # Convierte los pedidos.
         jobs = []
         for job in payload["data"]:
             jobs.append(PedidoSolicitud(
@@ -75,7 +79,7 @@ class ManejadorAPI:
                 pickup=job["pickup"],
                 dropoff=job["dropoff"],
                 payout=job["payout"],
-                duration=self.default_duration,  # ⬅️ ignoramos deadline
+                duration=self.default_duration, #Se ignora el deadline del API
                 weight=job["weight"],
                 priority=job["priority"],
                 release_time=job["release_time"]
@@ -87,6 +91,7 @@ class ManejadorAPI:
 
         return jobs
 
+        #Guarda los pedidos en CSV
     def save_jobs_to_csv(self, jobs: List[PedidoSolicitud], filename: str):
         filepath = self.cache_dir / filename
         with open(filepath, "w", newline="", encoding="utf-8") as f:
@@ -101,14 +106,15 @@ class ManejadorAPI:
                     job.pickup[0], job.pickup[1],
                     job.dropoff[0], job.dropoff[1],
                     job.payout,
-                    job.duration,   # ⬅️ en vez de deadline guardamos duration
+                    job.duration,   #En sustitución del deadlone, se guarda la duración.
                     job.weight,
                     job.priority,
                     job.release_time
                 ])
-        print(f"✅ Jobs saved to {filepath}")
+        print(f"Jobs saved to {filepath}")
 
     # ===================== MAPA =====================
+    #Recoge la información del mapa para guardarlo en CityMap.
     def get_map(self, save: bool = True) -> CityMap:
         url = f"{self.BASE_URL}/city/map"
         response = self.session.get(url)
@@ -123,12 +129,14 @@ class ManejadorAPI:
 
         return city_map
 
+    #Carga el mapa usando JSON
     def load_map_from_json(self, filename: str = "map.json") -> CityMap:
         filepath = self.cache_dir / filename
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
         return CityMap(**data)
 
+    #Guarda mapa usando CSV
     def save_map_to_csv(self, city_map: CityMap, filename: str):
         filepath = self.cache_dir / filename
         with open(filepath, "w", newline="", encoding="utf-8") as f:
@@ -143,13 +151,13 @@ class ManejadorAPI:
                     tile.surface_weight,
                     tile.blocked
                 ])
-        print(f"✅ Map saved to {filepath}")
+        print(f"Mapa guardado en {filepath}")
 
     def update_data(self):
         """Descarga y actualiza todos los datos (clima, jobs, mapa)"""
-        print("🔄 Actualizando datos desde la API...")
+        print("Actualizando datos desde la API...")
         city = "TigerCity"
         self.get_weather(city, mode="seed", save=True)
         self.get_jobs(save=True)
         self.get_map(save=True)
-        print("✅ Datos actualizados!")
+        print("Datos actualizados exitosamente")
