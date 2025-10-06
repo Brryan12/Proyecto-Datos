@@ -58,8 +58,6 @@ def game():
     TILE_WIDTH = 20
     TILE_HEIGHT = 20
 
-
-
     # --- cargar mapa ---
     try:
         with open(CACHE_DIR / "map.json", "r", encoding="utf-8") as f:
@@ -119,10 +117,28 @@ def game():
     
     # Calcular la posición exacta para que el jugador esté centrado en la casilla usando MapLogic
     start_x, start_y = map_logic.tiles_to_pixels(initial_tile_x, initial_tile_y)
-    
-    player = Player(SPRITES_DIR, stats, rep, TILE_WIDTH, TILE_HEIGHT, 
-                    start_x=start_x, 
-                    start_y=start_y)
+
+    # --- Cargar Partida ---
+    saves = Save.load_from_file()
+
+    if not saves:
+        print("[INFO] No hay partidas guardadas, creando partida nueva.")
+        save_data = Save()  # Guardado por defecto
+        save_data.save_to_file()
+
+        player = Player(SPRITES_DIR, stats, rep, TILE_WIDTH, TILE_HEIGHT, 
+            start_x=start_x, 
+            start_y=start_y)
+    else:
+        save_data = saves[0]  # Tomar la primera partida
+
+    # Inicializar jugador con datos del guardado
+    player = Player(
+    SPRITES_DIR, stats, rep, TILE_WIDTH, TILE_HEIGHT,
+    start_x=save_data.position[0],
+    start_y=save_data.position[1],
+    save_data=save_data
+    )
 
     # --- Inicializar sistema de deshacer ---
     undo_system = UndoSystem(10000)  # Permite deshacer hasta 50 movimientos
@@ -391,14 +407,11 @@ def game():
     # Incrementar día y guardar
     current_day = save_data.day + 1 
     new_save = player.exportar_estado( 
-        player_name=save_data.player_name,
+        #player_name=save_data.player_name,
         day=current_day,
-        #score=
-        #reputation=
-        position=(px,py),
-        #current_weather=  
+        current_weather=clima
         ) 
-    game_id = new_save.save_to_file() # se genera ID único automáticamente 
+    game_id = new_save.save_to_file() # guarda y devuelve el ID único
     save_data = new_save # actualizar referencia para siguiente tick
     
 def main_menu():
@@ -495,6 +508,13 @@ def pause(player, stats, rep, gestor, original_caption):
                     return True  # Retorna True para continuar el juego
                 if SAVE_BUTTON.checkForInput(MENU_MOUSE_POS):
                     try:
+                        save_data = player.exportar_estado(
+                            player_name="Jugador", 
+                            day=1,  # aquí puedes usar el día actual
+                            current_weather="clear"
+                        )
+                        save_id = save_data.save_to_file()
+                        print(f"Guardado con ID {save_id}")
                         pass
                     except Exception as e:
                         print(f"Error al guardar: {e}")
