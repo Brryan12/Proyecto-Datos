@@ -205,12 +205,12 @@ class Player(pygame.sprite.Sprite):
 
     def exportar_estado(self, player_name, day, city_name=None, score=None, reputation=None, position=None, current_weather=None):
         return Save(
-        player_name=player_name,
-        day=day,
+        player_name=player_name if player_name else "Jugador",
+        day=day if day else 1,
         city_name=city_name if city_name is not None else "TigerCity",
-        score=score if score is not None else 0,
-        reputation=reputation if reputation is not None else self.reputation.valor,
-        position=position if position is not None else (int(self.x), int(self.y)),
-        completed_jobs=[],
+        score=self.stats if score is not None else 0,
+        reputation=self.reputation.valor,
+        position=(int(self.x), int(self.y)),
+        completed_jobs=[],  # puedes llenar si tienes jobs completados
         current_weather=current_weather
     )
