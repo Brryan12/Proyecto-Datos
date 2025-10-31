@@ -7,8 +7,7 @@ import pygame
 import heapq
 import random
 from pathlib import Path
-from typing import Optional, List, Tuple, Dict, Set
-from collections import deque
+from typing import Optional, List, Tuple, Dict
 from src.game.player import Player
 from src.game.stats_module import Stats
 from src.game.reputation import Reputation
@@ -21,8 +20,8 @@ class Bot(Player):
     
     Niveles de dificultad:
     - EASY: Movimiento aleatorio con tendencia al objetivo (Random Walk)
-    - MEDIUM: BFS (Breadth-First Search) - encuentra camino pero no el óptimo
-    - HARD: Dijkstra - encuentra el camino más eficiente considerando costos
+    - MEDIUM: Expectimax - Evalúa movimientos futuros considerando incertidumbre
+    - HARD: Dijkstra + TSP - Optimiza rutas y secuencia de entregas con clima
     """
     
     # Constantes para niveles de dificultad
@@ -72,8 +71,15 @@ class Bot(Player):
         # Estado interno del bot
         self.current_path: List[Tuple[int, int]] = []
         self.current_goal: Optional[Tuple[int, int]] = None
-        self.current_task: Optional[str] = None  # "pickup", "deliver", "explore"
+        self.current_task: Optional[str] = None
         self.target_package = None
+        
+        # Para nivel HARD: secuencia de entregas optimizada
+        self.delivery_sequence: List = []
+        
+        # Para replanificación dinámica (HARD)
+        self.last_clima_factor: float = 1.0
+        self.replan_threshold: float = 0.3
         
         # Configuración por dificultad
         self.config = self._get_difficulty_config()
@@ -86,22 +92,22 @@ class Bot(Player):
         """Retorna configuración específica por dificultad"""
         configs = {
             self.EASY: {
-                'decision_interval': 60,  # Frames entre decisiones
-                'random_chance': 0.3,     # 30% chance de movimiento aleatorio
-                'look_ahead': 3,          # Tiles que mira adelante
-                'mistake_chance': 0.2,    # 20% chance de error
+                'decision_interval': 60,
+                'random_chance': 0.3,
+                'mistake_chance': 0.2,
+                'expectimax_depth': 0,
             },
             self.MEDIUM: {
                 'decision_interval': 30,
                 'random_chance': 0.1,
-                'look_ahead': 10,
                 'mistake_chance': 0.05,
+                'expectimax_depth': 2,
             },
             self.HARD: {
                 'decision_interval': 20,
                 'random_chance': 0.0,
-                'look_ahead': float('inf'),
                 'mistake_chance': 0.0,
+                'expectimax_depth': 3,
             }
         }
         return configs.get(self.difficulty, configs[self.MEDIUM])
@@ -118,12 +124,19 @@ class Bot(Player):
         # Guardar posición anterior para comparar
         old_pos = self._get_tile_pos()
         
+        # Detectar cambio significativo en clima para replanificar (HARD)
+        if self.difficulty == self.HARD:
+            if abs(clima_factor - self.last_clima_factor) > self.replan_threshold:
+                if self.current_goal:
+                    self._plan_path_to(self.current_goal, clima_factor)
+                self.last_clima_factor = clima_factor
+        
         self.decision_counter += 1
         
         # Tomar decisiones periódicamente
         if self.decision_counter >= self.decision_interval:
             self.decision_counter = 0
-            self._make_decision(pedidos)
+            self._make_decision(pedidos, clima_factor)
         
         # Ejecutar movimiento según el path actual
         moved = False
@@ -137,7 +150,7 @@ class Bot(Player):
         if not moved:
             self.stats.recupera(segundos=dt, rest_point=False)
     
-    def _make_decision(self, pedidos: List):
+    def _make_decision(self, pedidos: List, clima_factor: float = 1.0):
         """Decide qué hacer basándose en el estado actual y pedidos disponibles"""
         
         # Verificar si cometemos un error (solo en dificultades bajas)
@@ -145,43 +158,49 @@ class Bot(Player):
             self._make_random_decision()
             return
         
-        # Prioridad 1: Si tenemos paquetes, entregarlos
+        # Para HARD
+        if self.difficulty == self.HARD and self.inventario and len(self.inventario.get_orders()) > 1:
+            self._optimize_delivery_sequence(clima_factor)
+        
+        # Si hay paquetes, entregarlos
         if self.inventario and len(self.inventario.get_orders()) > 0:
             packages = self.inventario.get_orders()
-            # Ordenar por prioridad o tiempo
-            packages = sorted(packages, key=lambda p: p.priority, reverse=True)
-            target = packages[0]
+            
+            # usar la secuencia optimizada
+            if self.difficulty == self.HARD and self.delivery_sequence:
+                target = self.delivery_sequence[0]
+            else:
+                packages = sorted(packages, key=lambda p: p.priority, reverse=True)
+                target = packages[0]
+            
             self.current_task = "deliver"
             self.target_package = target
             self.current_goal = tuple(target.dropoff)
-            self._plan_path_to(self.current_goal)
+            self._plan_path_to(self.current_goal, clima_factor)
             return
-        
-        # Prioridad 2: Recoger paquetes disponibles
+
+        # Recoger paquetes
         if pedidos:
-            # Filtrar paquetes no recogidos
+            # Filtrar no recogidos
             available = [p for p in pedidos if not self._is_package_picked(p)]
             if available:
-                # Elegir el más cercano o más prioritario según dificultad
-                target = self._choose_best_package(available)
+                target = self._choose_best_package(available, clima_factor)
                 self.current_task = "pickup"
                 self.target_package = target
                 self.current_goal = tuple(target.pickup)
-                self._plan_path_to(self.current_goal)
+                self._plan_path_to(self.current_goal, clima_factor)
                 return
         
-        # Prioridad 3: Explorar (movimiento aleatorio)
+        # movimiento aleatorio
         self.current_task = "explore"
         self._make_random_decision()
     
     def _is_package_picked(self, package) -> bool:
-        """Verifica si un paquete ya fue recogido"""
         if not self.inventario:
             return False
         return package in self.inventario.get_orders()
     
-    def _choose_best_package(self, packages: List):
-        """Elige el mejor paquete según la dificultad"""
+    def _choose_best_package(self, packages: List, clima_factor: float = 1.0):
         current_pos = self._get_tile_pos()
         
         if self.difficulty == self.EASY:
@@ -191,80 +210,67 @@ class Bot(Player):
             return random.choice(candidates)
         
         elif self.difficulty == self.MEDIUM:
-            # Medium: El más cercano
-            return min(packages, key=lambda p: self._manhattan_distance(current_pos, tuple(p.pickup)))
+            # Medium: Usar Expectimax para evaluar mejor opción
+            return self._expectimax_choose_package(packages, clima_factor)
         
-        else:  # HARD
-            # Hard: Mejor combinación de distancia y prioridad
+        else: 
+            # Hard: Mejor combinación de distancia, prioridad y clima
             def score(p):
                 dist = self._manhattan_distance(current_pos, tuple(p.pickup))
                 priority = p.priority
                 time_left = p.duration
-                return (priority * 10) - (dist * 0.5) + (time_left * 0.1)
+                # Ajustar score por clima
+                clima_penalty = (1.0 - clima_factor) * dist * 0.5
+                return (priority * 10) - (dist * 0.5) + (time_left * 0.1) - clima_penalty
             
             return max(packages, key=score)
     
-    def _plan_path_to(self, goal: Tuple[int, int]):
-        """Planifica un camino al objetivo usando el algoritmo apropiado"""
+    def _plan_path_to(self, goal: Tuple[int, int], clima_factor: float = 1.0):
         if not self.map_logic:
             return
         
         start = self._get_tile_pos()
         
-        # Verificar si el objetivo está bloqueado
         if self.map_logic.is_blocked(goal[0], goal[1]):
-            # Si el objetivo está bloqueado, buscar un tile adyacente válido
             neighbors = [
-                (goal[0], goal[1] - 1),  # Arriba
-                (goal[0], goal[1] + 1),  # Abajo
-                (goal[0] - 1, goal[1]),  # Izquierda
-                (goal[0] + 1, goal[1]),  # Derecha
+                (goal[0], goal[1] - 1),
+                (goal[0], goal[1] + 1),
+                (goal[0] - 1, goal[1]),
+                (goal[0] + 1, goal[1]),
             ]
             valid_neighbors = [n for n in neighbors if not self.map_logic.is_blocked(n[0], n[1])]
             if valid_neighbors:
-                # Usar el vecino más cercano a nuestra posición actual
                 goal = min(valid_neighbors, key=lambda n: self._manhattan_distance(start, n))
             else:
-                # No hay vecinos válidos, cancelar
                 self.current_path = []
                 return
         
         if self.difficulty == self.EASY:
-            # Easy: Movimiento aleatorio con tendencia
             self.current_path = self._random_walk_path(start, goal)
-        
         elif self.difficulty == self.MEDIUM:
-            # Medium: BFS
-            self.current_path = self._bfs_path(start, goal)
-        
-        else:  # HARD
-            # Hard: Dijkstra
-            self.current_path = self._dijkstra_path(start, goal)
+            self.current_path = self._expectimax_path(start, goal, clima_factor)
+        else:
+            self.current_path = self._dijkstra_path(start, goal, clima_factor)
     
     def _random_walk_path(self, start: Tuple[int, int], goal: Tuple[int, int]) -> List[Tuple[int, int]]:
         """
-        Movimiento aleatorio con tendencia hacia el objetivo.
-        No garantiza llegar, pero es más humano e impredecible.
+        Movimiento aleatorio per va hacia el objetivo (EASY).
         """
         path = []
         current = start
-        max_steps = 20  # Límite para evitar loops infinitos
+        max_steps = 20
         
         for _ in range(max_steps):
             if current == goal:
                 break
             
-            # 70% chance de moverse hacia el objetivo
             if random.random() > self.config['random_chance']:
-                # Movimiento inteligente
                 neighbors = self._get_valid_neighbors(current)
                 if neighbors:
-                    # Elegir el vecino más cercano al objetivo
                     next_tile = min(neighbors, key=lambda n: self._manhattan_distance(n, goal))
                     path.append(next_tile)
                     current = next_tile
             else:
-                # Movimiento aleatorio
                 neighbors = self._get_valid_neighbors(current)
                 if neighbors:
                     next_tile = random.choice(neighbors)
@@ -273,74 +279,138 @@ class Bot(Player):
         
         return path
     
-    def _bfs_path(self, start: Tuple[int, int], goal: Tuple[int, int]) -> List[Tuple[int, int]]:
+    def _expectimax_path(self, start: Tuple[int, int], goal: Tuple[int, int], clima_factor: float = 1.0) -> List[Tuple[int, int]]:
         """
-        Breadth-First Search: Encuentra un camino (no necesariamente el más corto).
-        Bueno para dificultad media.
+        Función heurística: score = α*(payout) – β*(distance) – γ*(weather_penalty)
         """
         if start == goal:
             return []
         
-        queue = deque([(start, [start])])
-        visited: Set[Tuple[int, int]] = {start}
+        depth = self.config['expectimax_depth']
         
-        while queue:
-            current, path = queue.popleft()
+        def expectimax_value(pos: Tuple[int, int], current_depth: int, is_max: bool) -> float:
+            """Calcular valor expectimax de una posición"""
+            if current_depth == 0 or pos == goal:
+                return self._evaluate_position(pos, goal, clima_factor)
             
+            neighbors = self._get_valid_neighbors(pos)
+            if not neighbors:
+                return self._evaluate_position(pos, goal, clima_factor)
+            
+            if is_max:
+                return max(expectimax_value(n, current_depth - 1, False) for n in neighbors)
+            else:
+                values = [expectimax_value(n, current_depth - 1, True) for n in neighbors]
+                weights = []
+                for n in neighbors:
+                    dist_to_goal = self._manhattan_distance(n, goal)
+                    weight = 1.0 / (1.0 + dist_to_goal * 0.1)
+                    weights.append(weight)
+                
+                total_weight = sum(weights)
+                if total_weight == 0:
+                    return sum(values) / len(values)
+                
+                return sum(v * w / total_weight for v, w in zip(values, weights))
+        
+        path = []
+        current = start
+        visited = {start}
+        max_steps = 50
+        
+        for _ in range(max_steps):
             if current == goal:
-                return path[1:]  # Excluir posición inicial
+                break
             
-            for neighbor in self._get_valid_neighbors(current):
-                if neighbor not in visited:
-                    visited.add(neighbor)
-                    queue.append((neighbor, path + [neighbor]))
+            neighbors = self._get_valid_neighbors(current)
+            unvisited_neighbors = [n for n in neighbors if n not in visited]
+            
+            if not unvisited_neighbors:
+                unvisited_neighbors = neighbors
+            
+            if not unvisited_neighbors:
+                break
+            
+            best_neighbor = max(
+                unvisited_neighbors,
+                key=lambda n: expectimax_value(n, depth - 1, False)
+            )
+            
+            path.append(best_neighbor)
+            visited.add(best_neighbor)
+            current = best_neighbor
         
-        return []  # No se encontró camino
+        return path
     
-    def _dijkstra_path(self, start: Tuple[int, int], goal: Tuple[int, int]) -> List[Tuple[int, int]]:
+    def _evaluate_position(self, pos: Tuple[int, int], goal: Tuple[int, int], clima_factor: float) -> float:
         """
-        Algoritmo de Dijkstra: Encuentra el camino más corto considerando costos.
-        Perfecto para dificultad difícil.
+        Función heurística para Expectimax.
+        """
+        α, β, γ = 1.0, 0.5, 0.3
+        
+        dist_to_goal = self._manhattan_distance(pos, goal)
+        expected_payout = 100.0 / (1.0 + dist_to_goal)
+        distance_cost = dist_to_goal
+        weather_penalty = (1.0 - clima_factor) * 10.0
+        tile_cost = self._get_tile_cost(pos)
+        terrain_bonus = (2.0 - tile_cost) * 5.0
+        
+        return α * expected_payout - β * distance_cost - γ * weather_penalty + terrain_bonus
+    
+    def _expectimax_choose_package(self, packages: List, clima_factor: float) -> any:
+        current_pos = self._get_tile_pos()
+        
+        def evaluate_package(package) -> float:
+            α, β, γ = 1.0, 0.4, 0.3
+            
+            payout = package.payout
+            dist_to_pickup = self._manhattan_distance(current_pos, tuple(package.pickup))
+            weather_penalty = (1.0 - clima_factor) * dist_to_pickup * 0.5
+            priority_bonus = package.priority * 5.0
+            time_left = package.duration
+            time_penalty = 0 if time_left > 60 else (60 - time_left) * 0.5
+            
+            return α * payout - β * dist_to_pickup - γ * weather_penalty + priority_bonus - time_penalty
+        
+        return max(packages, key=evaluate_package)
+    
+    def _dijkstra_path(self, start: Tuple[int, int], goal: Tuple[int, int], clima_factor: float = 1.0) -> List[Tuple[int, int]]:
+        """
+        Algoritmo de Dijkstra para nivel HARD.
         """
         if start == goal:
             return []
         
-        # Priority queue: (costo, nodo, camino)
         heap = [(0, start, [start])]
         visited: Dict[Tuple[int, int], float] = {start: 0}
         
         iterations = 0
-        while heap and iterations < 1000:  # Límite de seguridad
+        while heap and iterations < 1000:
             iterations += 1
             cost, current, path = heapq.heappop(heap)
             
             if current == goal:
-                return path[1:]  # Excluir posición inicial
+                return path[1:]
             
-            # Explorar vecinos
             neighbors = self._get_valid_neighbors(current)
             
             for neighbor in neighbors:
-                # Calcular costo del movimiento
-                move_cost = self._get_tile_cost(neighbor)
+                base_cost = self._get_tile_cost(neighbor)
+                clima_multiplier = 1.0 + (1.0 - clima_factor) * 0.5
+                move_cost = base_cost * clima_multiplier
                 new_cost = cost + move_cost
                 
-                # Si encontramos un camino mejor o no hemos visitado este nodo
                 if neighbor not in visited or new_cost < visited[neighbor]:
                     visited[neighbor] = new_cost
                     heapq.heappush(heap, (new_cost, neighbor, path + [neighbor]))
         
-        # FALLBACK: Si no encontramos camino, crear un path parcial hacia el objetivo
         if visited:
-            # Encontrar el nodo visitado más cercano al objetivo
             closest = min(visited.keys(), key=lambda n: self._manhattan_distance(n, goal))
-            # Reconstruir path hasta el nodo más cercano usando BFS simple
             return self._build_partial_path(start, closest)
         
-        return []  # No se encontró camino
+        return []
     
     def _build_partial_path(self, start: Tuple[int, int], goal: Tuple[int, int]) -> List[Tuple[int, int]]:
-        """Construye un path parcial usando movimiento greedy hacia el objetivo"""
         path = []
         current = start
         max_steps = 20
@@ -353,15 +423,59 @@ class Bot(Player):
             if not neighbors:
                 break
             
-            # Elegir vecino más cercano al objetivo
             next_tile = min(neighbors, key=lambda n: self._manhattan_distance(n, goal))
             path.append(next_tile)
             current = next_tile
         
         return path
     
+    def _optimize_delivery_sequence(self, clima_factor: float = 1.0):
+        if not self.inventario:
+            return
+        
+        packages = self.inventario.get_orders()
+        if len(packages) <= 1:
+            self.delivery_sequence = packages.copy()
+            return
+        
+        current_pos = self._get_tile_pos()
+        unvisited = packages.copy()
+        sequence = []
+        
+        while unvisited:
+            best_package = None
+            best_score = float('-inf')
+            
+            for package in unvisited:
+                dropoff_pos = tuple(package.dropoff)
+                path_cost = self._estimate_path_cost(current_pos, dropoff_pos, clima_factor)
+                
+                priority_weight = 10.0
+                cost_weight = 0.5
+                time_left = package.duration
+                urgency = 100.0 / (1.0 + time_left) if time_left > 0 else 100.0
+                
+                score = (package.priority * priority_weight) - (path_cost * cost_weight) + urgency
+                
+                if score > best_score:
+                    best_score = score
+                    best_package = package
+            
+            if best_package:
+                sequence.append(best_package)
+                unvisited.remove(best_package)
+                current_pos = tuple(best_package.dropoff)
+        
+        self.delivery_sequence = sequence
+    
+    def _estimate_path_cost(self, start: Tuple[int, int], goal: Tuple[int, int], clima_factor: float) -> float:
+        """costo estimado de un camino usando distancia Manhattan ajustada por clima"""
+        base_distance = self._manhattan_distance(start, goal)
+        clima_multiplier = 1.0 + (1.0 - clima_factor) * 0.5
+        return base_distance * clima_multiplier
+    
     def _get_tile_cost(self, tile: Tuple[int, int]) -> float:
-        """Calcula el costo de moverse a un tile (para Dijkstra)"""
+        """Calcula el costo de moverse a un tile usando surface_weight"""
         if not self.map_logic:
             return 1.0
         
@@ -369,7 +483,6 @@ class Bot(Player):
         if not tile_info:
             return 1.0
         
-        # Usar surface_weight si está disponible
         if hasattr(tile_info, 'surface_weight') and tile_info.surface_weight:
             return tile_info.surface_weight
         
@@ -379,10 +492,10 @@ class Bot(Player):
         """Obtiene vecinos válidos (no bloqueados) de una posición"""
         x, y = pos
         neighbors = [
-            (x, y - 1),  # Arriba
-            (x, y + 1),  # Abajo
-            (x - 1, y),  # Izquierda
-            (x + 1, y),  # Derecha
+            (x, y - 1),
+            (x, y + 1),
+            (x - 1, y),
+            (x + 1, y),
         ]
         
         if not self.map_logic:
@@ -396,39 +509,28 @@ class Bot(Player):
     
     def _follow_path(self, clima_factor: float = 1.0):
         """Sigue el camino planificado moviendo al bot"""
-        if not self.current_path:
+        if not self.current_path or not self.stats.puede_moverse():
             return
         
-        # Verificar si el bot puede moverse
-        if not self.stats.puede_moverse():
-            # El bot está exhausto, no puede moverse
-            return
-        
-        # Obtener siguiente tile en el camino
         next_tile = self.current_path[0]
         current_tile = self._get_tile_pos()
         
-        # Si ya llegamos al siguiente tile, quitarlo del path
         if current_tile == next_tile:
             self.current_path.pop(0)
             if not self.current_path:
                 self._on_goal_reached()
             return
         
-        # Verificar si el siguiente tile está bloqueado
         if self.map_logic and self.map_logic.is_blocked(next_tile[0], next_tile[1]):
-            # El tile está bloqueado, replanificar
             if self.current_goal:
-                self._plan_path_to(self.current_goal)
+                self._plan_path_to(self.current_goal, clima_factor)
             else:
                 self.current_path = []
             return
         
-        # Calcular dirección
         dx = next_tile[0] - current_tile[0]
         dy = next_tile[1] - current_tile[1]
         
-        # Determinar dirección de movimiento
         if dy < 0:
             direccion = "up"
         elif dy > 0:
@@ -440,64 +542,43 @@ class Bot(Player):
         else:
             return
         
-        # Obtener información del tile para surface_weight
         tile_info = None
         if self.map_logic:
             tile_info = self.map_logic.get_tile_info(next_tile[0], next_tile[1])
         
-        # Calcular peso del inventario
         peso_inventario = 0.0
         if self.inventario:
             pedidos_en_inventario = self.inventario.get_orders()
             peso_inventario = sum(pedido.weight for pedido in pedidos_en_inventario)
         
-        # Mover el bot usando el método heredado
         self.mover(
             direccion=direccion,
             peso_total=peso_inventario,
-            clima="clear",  # TODO: Obtener clima real
+            clima="clear",
             clima_factor=clima_factor,
             tile_info=tile_info
         )
     
     def _get_tile_pos(self) -> Tuple[int, int]:
-        """Obtiene la posición actual en tiles"""
+        """Obtiene la posición actual"""
         tile_x = int(self.x // self.tile_width)
         tile_y = int(self.y // self.tile_height)
         return (tile_x, tile_y)
     
     def _on_goal_reached(self):
         """Callback cuando el bot llega a su objetivo"""
-        if self.current_task == "pickup":
-            # Aquí se debería recoger el paquete
-            # Esto se manejará desde el main loop
-            pass
-        elif self.current_task == "deliver":
-            # Aquí se debería entregar el paquete
-            # Esto se manejará desde el main loop
-            pass
+        if self.current_task == "deliver":
+            if self.delivery_sequence and self.target_package in self.delivery_sequence:
+                self.delivery_sequence.remove(self.target_package)
         
-        # Limpiar estado
         self.current_goal = None
         self.current_task = None
     
     def _make_random_decision(self):
-        """Genera un movimiento completamente aleatorio"""
+        """Genera un movimiento random"""
         current_pos = self._get_tile_pos()
         neighbors = self._get_valid_neighbors(current_pos)
         
         if neighbors:
             self.current_path = [random.choice(neighbors)]
-    
-    def get_current_target(self) -> Optional[Tuple[int, int]]:
-        """Retorna el objetivo actual del bot (útil para debugging)"""
-        return self.current_goal
-    
-    def get_current_task(self) -> Optional[str]:
-        """Retorna la tarea actual del bot"""
-        return self.current_task
-    
-    def reset_path(self):
-        """Limpia el camino actual (útil cuando hay cambios en el entorno)"""
-        self.current_path = []
-        self.current_goal = None
+

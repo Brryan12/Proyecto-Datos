@@ -138,8 +138,8 @@ def select_bot_difficulty():
         # Opciones
         options = [
             ("EASY", "Random Walk - Movimiento errático"),
-            ("MEDIUM", "BFS - Camino válido (ignora costos)"),
-            ("HARD", "Dijkstra - Camino óptimo (minimiza costos)")
+            ("MEDIUM", "Expectimax - Evalúa futuros con heurística"),
+            ("HARD", "Dijkstra + TSP - Optimiza rutas y clima")
         ]
         
         y_start = 200
@@ -148,7 +148,7 @@ def select_bot_difficulty():
             if i == selected:
                 name_color = (255, 255, 0)  # Amarillo para seleccionado
                 desc_color = (200, 200, 200)
-                indicator = "► "
+                indicator = ">"
             else:
                 name_color = (200, 200, 200)
                 desc_color = (150, 150, 150)
@@ -1340,6 +1340,12 @@ def game_with_bot(bot_difficulty):
         player_score = player.score.calcular_total()
         bot_score = bot.score.calcular_total()
         
+        # Información adicional del bot según dificultad
+        bot_extra_info = []
+        if bot_difficulty == Bot.HARD and hasattr(bot, 'delivery_sequence'):
+            if bot.delivery_sequence:
+                bot_extra_info.append(f"Secuencia: {len(bot.delivery_sequence)} entregas")
+        
         hud_lines = [
             f"Tiempo: {minutos:02d}:{segundos:02d}",
             "",
@@ -1349,14 +1355,21 @@ def game_with_bot(bot_difficulty):
             f"Resist: {player.stats.resistencia:.1f}",
             f"Inventario: {len(inventario_player.get_orders())} paquetes",
             "",
-            f"=== {bot.name} ===",
+            f"=== {bot.name} ({bot_difficulty.upper()}) ===",
             f"Score: ${bot_score:.0f} / ${META_INGRESOS}",
             f"Rep: {bot.reputation.valor:.1f}",
             f"Resist: {bot.stats.resistencia:.1f}",
             f"Inventario: {len(inventario_bot.get_orders())} paquetes",
-            f"Estado: {bot.current_task}",
+            f"Tarea: {bot.current_task or 'ninguna'}",
+        ]
+        
+        # Agregar información extra del bot
+        hud_lines.extend(bot_extra_info)
+        
+        hud_lines.extend([
             "",
             f"Clima: {sistema_clima.obtener_condicion()}",
+            f"Factor: {clima_factor:.2f}",
             "",
             "CONTROLES:",
             "Flechas = Mover",
@@ -1364,7 +1377,7 @@ def game_with_bot(bot_difficulty):
             "M = Entregar paquete",
             "I = Ver inventario",
             "ESC = Pausa"
-        ]
+        ])
         
         for i, line in enumerate(hud_lines):
             hud_surface = get_font(8).render(line, True, (255, 255, 255))
