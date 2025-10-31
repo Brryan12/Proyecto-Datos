@@ -1,8 +1,3 @@
-"""
-Bot AI para Courier Quest
-Implementa 3 niveles de dificultad con diferentes algoritmos de pathfinding y estrategias.
-"""
-
 import pygame
 import heapq
 import random
@@ -12,15 +7,16 @@ from src.game.player import Player
 from src.game.stats_module import Stats
 from src.game.reputation import Reputation
 from src.game.save import Save
+from pathlib import Path as _Path
 
 
 class Bot(Player):
     """
-    Bot AI que hereda de Player y agrega capacidades de decisión autónoma.
+    hereda de Player.
     
     Niveles de dificultad:
-    - EASY: Movimiento aleatorio con tendencia al objetivo (Random Walk)
-    - MEDIUM: Expectimax - Evalúa movimientos futuros considerando incertidumbre
+    - EASY: Movimiento random
+    - MEDIUM: Expectimax - Evalúa movimientos futuros
     - HARD: Dijkstra + TSP - Optimiza rutas y secuencia de entregas con clima
     """
     
@@ -44,14 +40,7 @@ class Bot(Player):
         map_logic = None,
         inventario = None
     ):
-        """
-        Inicializa el bot con un nivel de dificultad específico.
         
-        Args:
-            difficulty: Nivel de dificultad (EASY, MEDIUM, HARD)
-            map_logic: Referencia al MapLogic para pathfinding
-            inventario: Referencia al inventario para gestión de paquetes
-        """
         super().__init__(
             sprites_dir=sprites_dir,
             stats=stats,
@@ -63,6 +52,23 @@ class Bot(Player):
             save_data=save_data,
             player_name=player_name
         )
+        # --- Intent: usar sprites específicos del bot si existen en la carpeta ---
+        
+        # Reemplazar directamente los sprites del bot (se asume que existen)
+        sprites_dir = _Path(sprites_dir)
+        self.sprites.update({
+            "up": pygame.transform.scale(pygame.image.load(sprites_dir / "Spr_delivery_bot_up.png").convert_alpha(), (self.tile_width, self.tile_height)),
+            "down": pygame.transform.scale(pygame.image.load(sprites_dir / "Spr_delivery_bot_down.png").convert_alpha(), (self.tile_width, self.tile_height)),
+            "izq": pygame.transform.scale(pygame.image.load(sprites_dir / "Spr_delivery_bot_izq.png").convert_alpha(), (self.tile_width, self.tile_height)),
+            "der": pygame.transform.scale(pygame.image.load(sprites_dir / "Spr_delivery_bot_der.png").convert_alpha(), (self.tile_width, self.tile_height)),
+        })
+
+        # Actualizar imagen actual manteniendo el centro si existe
+        current_center = getattr(self.rect, 'center', None)
+        self.image = self.sprites.get(self.direccion, next(iter(self.sprites.values())))
+        if current_center:
+            self.rect = self.image.get_rect(center=current_center)
+
         
         self.difficulty = difficulty
         self.map_logic = map_logic
@@ -114,12 +120,8 @@ class Bot(Player):
     
     def update(self, dt: float, pedidos: List, clima_factor: float = 1.0):
         """
-        Actualización principal del bot cada frame.
-        
-        Args:
-            dt: Delta time
-            pedidos: Lista de pedidos disponibles
-            clima_factor: Factor de clima que afecta velocidad
+        Actualización del bot cada tile.
+
         """
         # Guardar posición anterior para comparar
         old_pos = self._get_tile_pos()

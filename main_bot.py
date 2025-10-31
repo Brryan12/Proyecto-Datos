@@ -10,9 +10,8 @@ from src.game.package_notifier import NotificadorPedidos
 from src.api.ManejadorAPI import ManejadorAPI
 from src.game.events import Events
 from src.game.save import Save
-from src.game.inventory import InventarioPedidos  # Importar InventarioPedidos
+from src.game.inventory import InventarioPedidos
 
-# Intento de import seguro de ServicioPedidos (soporta dos ubicaciones comunes)
 try:
     from src.models.pedidos_service import ServicioPedidos
 except Exception:
@@ -30,12 +29,11 @@ from src.game.map_logic import MapLogic
 from src.game.stats_module import Stats
 from src.game.reputation import Reputation
 from src.game.player import Player
-from src.game.bot import Bot  # Importar Bot para el modo VS BOT
+from src.game.bot import Bot 
 from src.game.weather_system import SistemaClima
 from src.game.undo import UndoSystem
 from src.game.game_state_manager import GameStateManager
 
-# Inicializar pygame antes de usar cualquier función de pygame
 pygame.init()
 
 BG = pygame.image.load("./sprites/Background.png")
@@ -43,11 +41,10 @@ BASE_DIR = Path(__file__).resolve().parent
 CACHE_DIR = BASE_DIR / "cache"
 SPRITES_DIR = BASE_DIR / "sprites"
 
-def get_font(size): # Returns Press-Start-2P in the desired size
+def get_font(size):
     return pygame.font.Font("./sprites/font.ttf", size)
 
 def get_player_name():
-    """Pantalla para ingresar el nombre del jugador"""
     pygame.display.set_caption("Courier Quest - Ingresa tu nombre")
     
     name = ""
@@ -60,7 +57,6 @@ def get_player_name():
         dt = pygame.time.Clock().tick(60)
         cursor_timer += dt
         
-        # Alternar cursor cada 500ms
         if cursor_timer >= 500:
             cursor_visible = not cursor_visible
             cursor_timer = 0
@@ -76,32 +72,26 @@ def get_player_name():
                 elif event.key == pygame.K_BACKSPACE:
                     name = name[:-1]
                 elif event.key == pygame.K_ESCAPE:
-                    return None  # Cancelar y volver al menú
+                    return None
                 else:
-                    # Agregar carácter si hay espacio y es válido
                     if len(name) < max_length and event.unicode.isprintable():
                         name += event.unicode
         
-        # Dibujar pantalla
         SCREEN.blit(BG, (0, 0))
         
-        # Título
         title_font = get_font(32)
         title_text = title_font.render("INGRESA TU NOMBRE", True, (255, 255, 255))
         title_rect = title_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 100))
         SCREEN.blit(title_text, title_rect)
         
-        # Campo de entrada
         input_font = get_font(24)
         input_width = 400
         input_height = 50
         input_rect = pygame.Rect((WINDOW_WIDTH - input_width) // 2, WINDOW_HEIGHT // 2 - 25, input_width, input_height)
         
-        # Fondo del campo
         pygame.draw.rect(SCREEN, (255, 255, 255), input_rect)
         pygame.draw.rect(SCREEN, (0, 0, 0), input_rect, 3)
         
-        # Texto ingresado
         display_text = name
         if cursor_visible:
             display_text += "|"
@@ -110,7 +100,6 @@ def get_player_name():
         text_rect = text_surface.get_rect(center=input_rect.center)
         SCREEN.blit(text_surface, text_rect)
         
-        # Instrucciones
         instruction_font = get_font(16)
         instruction_text = instruction_font.render("Presiona ENTER para continuar o ESC para cancelar", True, (255, 255, 255))
         instruction_rect = instruction_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 80))
@@ -121,21 +110,18 @@ def get_player_name():
     return name.strip()
 
 def select_bot_difficulty():
-    """Pantalla para seleccionar la dificultad del bot"""
     pygame.display.set_caption("Courier Quest - Seleccionar Dificultad del Bot")
     
-    selected = 1  # 0=EASY, 1=MEDIUM, 2=HARD
+    selected = 1
     
     while True:
         SCREEN.blit(BG, (0, 0))
         
-        # Título
         title_font = get_font(32)
         title = title_font.render("DIFICULTAD DEL BOT", True, (255, 255, 255))
         title_rect = title.get_rect(center=(WINDOW_WIDTH // 2, 100))
         SCREEN.blit(title, title_rect)
         
-        # Opciones
         options = [
             ("EASY", "Random Walk - Movimiento errático"),
             ("MEDIUM", "Expectimax - Evalúa futuros con heurística"),
@@ -144,9 +130,8 @@ def select_bot_difficulty():
         
         y_start = 200
         for i, (name, desc) in enumerate(options):
-            # Color según selección
             if i == selected:
-                name_color = (255, 255, 0)  # Amarillo para seleccionado
+                name_color = (255, 255, 0)
                 desc_color = (200, 200, 200)
                 indicator = ">"
             else:
@@ -154,19 +139,16 @@ def select_bot_difficulty():
                 desc_color = (150, 150, 150)
                 indicator = "  "
             
-            # Renderizar nombre de dificultad
             name_font = get_font(28)
             name_text = name_font.render(indicator + name, True, name_color)
             name_rect = name_text.get_rect(center=(WINDOW_WIDTH // 2, y_start + i * 100))
             SCREEN.blit(name_text, name_rect)
             
-            # Renderizar descripción
             desc_font = get_font(14)
             desc_text = desc_font.render(desc, True, desc_color)
             desc_rect = desc_text.get_rect(center=(WINDOW_WIDTH // 2, y_start + i * 100 + 30))
             SCREEN.blit(desc_text, desc_rect)
         
-        # Instrucciones
         instruction_font = get_font(16)
         instructions = [
             "↑↓ Seleccionar | ENTER Confirmar | ESC Cancelar"
@@ -177,7 +159,6 @@ def select_bot_difficulty():
             text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 60 + i * 25))
             SCREEN.blit(text, text_rect)
         
-        # Eventos
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -197,24 +178,20 @@ def select_bot_difficulty():
         pygame.display.update()
 
 def select_save_file():
-    """Pantalla para seleccionar una partida guardada"""
     pygame.display.set_caption("Courier Quest - Seleccionar Partida")
     
-    # Buscar todos los archivos de guardado usando GameStateManager
     game_state_manager = GameStateManager()
     save_files = []
     saves_dir = Path("src/game/saves")
     
     if saves_dir.exists():
         for file in saves_dir.glob("*.json"):
-            # Excluir el archivo savedScores.json que es solo para puntuaciones
             if file.name != "savedScores.json":
                 save_info = game_state_manager.get_save_info(file)
                 if save_info:
                     save_files.append(save_info)
     
     if not save_files:
-        # No hay partidas guardadas, mostrar mensaje
         show_no_saves_message()
         return None
     
@@ -242,16 +219,13 @@ def select_save_file():
                 elif event.key == pygame.K_ESCAPE:
                     return None
         
-        # Dibujar pantalla
         SCREEN.blit(BG, (0, 0))
         
-        # Título
         title_font = get_font(24)
         title_text = title_font.render("SELECCIONAR PARTIDA GUARDADA", True, (255, 255, 255))
         title_rect = title_text.get_rect(center=(WINDOW_WIDTH // 2, 50))
         SCREEN.blit(title_text, title_rect)
         
-        # Lista de partidas
         list_font = get_font(16)
         y_start = 120
         
@@ -262,13 +236,11 @@ def select_save_file():
                 
             save_info = save_files[file_index]
             
-            # Color de fondo para la selección actual
             if file_index == selected_index:
                 rect = pygame.Rect(30, y_start + i * 60 - 10, WINDOW_WIDTH - 60, 70)
                 pygame.draw.rect(SCREEN, (120, 120, 120), rect)
                 pygame.draw.rect(SCREEN, (255, 255, 255), rect, 3)
             
-            # Información de la partida
             name_text = list_font.render(f"Jugador: {save_info['player_name']}", True, (255, 255, 255))
             day_text = list_font.render(f"Día: {save_info['day']} | Rep: {save_info['reputation']:.1f} | Score: {save_info.get('score', 0)}", True, (200, 200, 200))
             city_text = list_font.render(f"Ciudad: {save_info['city']}", True, (180, 180, 180))
@@ -277,7 +249,6 @@ def select_save_file():
             SCREEN.blit(day_text, (60, y_start + i * 60 + 18))
             SCREEN.blit(city_text, (60, y_start + i * 60 + 36))
         
-        # Indicadores de scroll
         if scroll_offset > 0:
             up_arrow = list_font.render("↑ Más arriba", True, (255, 255, 255))
             SCREEN.blit(up_arrow, (WINDOW_WIDTH // 2 - 50, 100))
@@ -286,7 +257,6 @@ def select_save_file():
             down_arrow = list_font.render("↓ Más abajo", True, (255, 255, 255))
             SCREEN.blit(down_arrow, (WINDOW_WIDTH // 2 - 50, y_start + max_visible * 60))
         
-        # Instrucciones
         instruction_font = get_font(12)
         instructions = [
             "↑↓ Navegar | ENTER Seleccionar | ESC Cancelar"
@@ -300,11 +270,10 @@ def select_save_file():
         pygame.display.update()
 
 def show_no_saves_message():
-    """Mostrar mensaje cuando no hay partidas guardadas"""
     clock = pygame.time.Clock()
     show_time = 0
     
-    while show_time < 2000:  # Mostrar por 2 segundos
+    while show_time < 2000:
         dt = clock.tick(60)
         show_time += dt
         
@@ -313,11 +282,10 @@ def show_no_saves_message():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
-                return  # Salir al presionar cualquier tecla
+                return
         
         SCREEN.blit(BG, (0, 0))
         
-        # Mensaje
         font = get_font(20)
         message = font.render("NO HAY PARTIDAS GUARDADAS", True, (255, 255, 255))
         message_rect = message.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 20))
@@ -330,28 +298,23 @@ def show_no_saves_message():
         pygame.display.update()
 
 def es_adyacente(pos1, pos2):
-    """Devuelve True si las posiciones están a una casilla de distancia (adyacentes)."""
     x1, y1 = pos1
     x2, y2 = pos2
     return (abs(x1 - x2) == 1 and y1 == y2) or (abs(y1 - y2) == 1 and x1 == x2)
 
 def mostrar_pantalla_victoria(player, tiempo_actual, player_name):
-    """Muestra la pantalla de victoria"""
     pygame.display.set_caption("Courier Quest - ¡VICTORIA!")
     
-    # Guardar automáticamente el scoreboard
     player.score.save_scoreboard(player_name)
     
     while True:
         SCREEN.blit(BG, (0, 0))
         
-        # Título de victoria
         titulo_font = get_font(32)
         titulo = titulo_font.render("¡VICTORIA!", True, (0, 255, 0))
         titulo_rect = titulo.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 150))
         SCREEN.blit(titulo, titulo_rect)
         
-        # Estadísticas finales
         stats_font = get_font(12)
         score_total = player.score.calcular_total()
         tiempo_minutos = tiempo_actual // 60
@@ -371,13 +334,12 @@ def mostrar_pantalla_victoria(player, tiempo_actual, player_name):
             text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 50 + i * 30))
             SCREEN.blit(text, text_rect)
         
-        # Manejar eventos
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
-                return  # Volver al menú principal
+                return
         
         pygame.display.update()
 
@@ -440,9 +402,8 @@ WINDOW_WIDTH = MAP_WIDTH + HUD_WIDTH
 WINDOW_HEIGHT = MAP_HEIGHT
 SCREEN = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 
-# Constantes del juego
-META_INGRESOS = 1000  # Meta de ganancias para victoria
-TIEMPO_TOTAL_JORNADA = 900  # 15 minutos de jornada
+META_INGRESOS = 1000
+TIEMPO_TOTAL_JORNADA = 900
 
 save = Save.load_from_file()
 
@@ -450,17 +411,16 @@ def game(new_game=False, save_file=None):
     global save
     print("Iniciando Courier Quest...")
     
-    # Si es nueva partida, siempre preguntar el nombre
+    # Si es nueva partida, preguntar el nombre
     if new_game:
         player_name = get_player_name()
-        if player_name is None:  # Usuario canceló
+        if player_name is None:
             return  # Volver al menú principal
-        # Para nueva partida, no usar save data existente
         save_data_to_use = None
         is_full_save = False
         loaded_full_state = None
     else:
-        # Continuar partida: cargar desde archivo específico si se proporciona
+        # Continuar partida: cargar del save
         if save_file:
             try:
                 # Detectar si es un archivo de GameStateManager o Save básico
@@ -492,7 +452,7 @@ def game(new_game=False, save_file=None):
                 print(f"Error cargando partida: {e}")
                 return
         else:
-            # Usar save existente (comportamiento anterior)
+            # Usar save existente
             saved_name = getattr(save, 'player_name', None) if save else None
             if not saved_name or saved_name.strip() == "":
                 # Si no hay nombre guardado, preguntar
@@ -507,10 +467,6 @@ def game(new_game=False, save_file=None):
     
     TILE_WIDTH = 20
     TILE_HEIGHT = 20
-
-
-
-
 
     # --- cargar mapa ---
     try:
@@ -536,7 +492,6 @@ def game(new_game=False, save_file=None):
     pedidos: List = []
     try:
         servicio_pedidos = ServicioPedidos(cache_dir=CACHE_DIR)
-        # Usa cache si existe; si quieres forzar descarga pon force_update=True
         pedidos = servicio_pedidos.cargar_pedidos(force_update=False)
 
             
@@ -546,10 +501,10 @@ def game(new_game=False, save_file=None):
         print(f"Error cargando pedidos: {e}")
 
     # --- Inicializar sistemas ---
-    gestor = GestorPedidos()  # Tu gestor existente
+    gestor = GestorPedidos() 
     notificador = NotificadorPedidos(WINDOW_WIDTH, WINDOW_HEIGHT)
     
-    # Configurar pedidos en el notificador (todos pasan por aquí primero)
+    # Configurar pedidos en el notificador
     notificador.agregar_pedidos_iniciales(pedidos)
     pygame.display.set_caption(city_map.city_name)
     clock = pygame.time.Clock()
@@ -560,12 +515,9 @@ def game(new_game=False, save_file=None):
     stats = Stats()
     rep = Reputation()
     
-    # Inicializar jugador con una posición específica en el mapa (por ejemplo, en el centro)
-    # Multiplicamos por TILE_WIDTH/HEIGHT para convertir de coordenadas de tile a píxeles
-    initial_tile_x = 15  # Ajustar según la posición inicial deseada
-    initial_tile_y = 15  # Ajustar según la posición inicial deseada
+    initial_tile_x = 15 
+    initial_tile_y = 15 
     
-    # Calcular la posición exacta para que el jugador esté centrado en la casilla usando MapLogic
     start_x, start_y = map_logic.tiles_to_pixels(initial_tile_x, initial_tile_y)
     
     player = Player(SPRITES_DIR, stats, rep, TILE_WIDTH, TILE_HEIGHT, 
@@ -575,16 +527,15 @@ def game(new_game=False, save_file=None):
                     player_name=player_name)
 
     # --- Inicializar sistema de deshacer ---
-    undo_system = UndoSystem(10000)  # Permite deshacer hasta 50 movimientos
-    # Guardar estado inicial
+    undo_system = UndoSystem(1000000)
     undo_system.save_state(player, 0, [])
 
     # --- Inicializar inventario ---
     inventario = InventarioPedidos(max_weight=10, screen_width=WINDOW_WIDTH, screen_height=WINDOW_HEIGHT)
 
     # Listas para rastrear el estado de los pedidos
-    pedidos_recogidos = []  # Pedidos que han sido recogidos del mapa
-    pedidos_entregados = []  # Pedidos que han sido completamente entregados
+    pedidos_recogidos = []
+    pedidos_entregados = [] 
 
     def recoger_paquete(pedido):
         """Recoge un paquete del mapa y lo agrega al inventario"""
@@ -603,15 +554,12 @@ def game(new_game=False, save_file=None):
 
     def entregar_paquete(pedido_a_entregar):
         """Entrega un paquete del inventario"""
-        # Verificar que el paquete esté en el inventario
         pedidos_en_inventario = inventario.get_orders()
         
         if pedido_a_entregar in pedidos_en_inventario:
-            # Calcular puntualidad de la entrega
             tiempo_limite = pedido_a_entregar.release_time + pedido_a_entregar.duration
             delay_seconds = tiempo_actual_segundos - tiempo_limite
             
-            # Determinar el estado de la entrega
             if delay_seconds <= -30:  # Entregado 30s antes o más
                 estado_entrega = "temprano"
                 print(f"¡Entrega temprana! +30s antes del límite")
@@ -622,16 +570,12 @@ def game(new_game=False, save_file=None):
                 estado_entrega = "tarde"
                 print(f"Entrega tardía: {delay_seconds}s de retraso")
             
-            # Registrar entrega en reputación
             player.reputation.registrar_entrega(estado_entrega, max(0, delay_seconds))
             
-            # Remover del inventario
             inventario.reject_order(pedido_a_entregar)
             
-            # Agregar puntuación (con multiplicador de reputación si aplica)
             ganado = player.score.agregar_ingreso(pedido_a_entregar.payout, player.reputation.valor)
             
-            # Agregar bonos o penalizaciones según puntualidad
             if estado_entrega == "temprano":
                 bono = pedido_a_entregar.payout * 0.1  # 10% de bono por entrega temprana
                 player.score.agregar_bono(bono, "Entrega temprana")
@@ -641,7 +585,6 @@ def game(new_game=False, save_file=None):
                 player.score.agregar_penalizacion(penalizacion, f"Retraso de {delay_seconds}s")
                 print(f"Penalización por retraso: -${penalizacion:.0f}")
             
-            # Marcar como entregado para que el dropoff desaparezca
             if pedido_a_entregar not in pedidos_entregados:
                 pedidos_entregados.append(pedido_a_entregar)
             
@@ -663,9 +606,6 @@ def game(new_game=False, save_file=None):
     running = True
     # Inicializar tiempo según si se restauró o es nueva partida
     if is_full_save and loaded_full_state:
-        # Para continuar desde donde se guardó, ajustar tiempo_inicio
-        # Fórmula: tiempo_actual_ms = pygame.time.get_ticks() - tiempo_inicio - tiempo_total_pausado
-        # Despejando: tiempo_inicio = pygame.time.get_ticks() - tiempo_actual_ms - tiempo_total_pausado
         tiempo_actual_target_ms = tiempo_actual_segundos_restored * 1000
         tiempo_inicio = pygame.time.get_ticks() - tiempo_actual_target_ms - tiempo_total_pausado_restored
         tiempo_total_pausado = tiempo_total_pausado_restored
@@ -673,31 +613,24 @@ def game(new_game=False, save_file=None):
         tiempo_inicio = pygame.time.get_ticks()
         tiempo_total_pausado = 0
     
-    # Variables para controlar el tiempo pausado
     tiempo_inicio_pausa = None  # Momento cuando comenzó la pausa actual
     juego_pausado = False  # Estado de pausa
     
     while running:
         dt = clock.tick(60) / 1000.0  # delta seconds
         
-        # Determinar si el juego debe estar pausado
         hay_notificacion_activa = notificador.activo
         
-        # Manejar transiciones de pausa
         if hay_notificacion_activa and not juego_pausado:
-            # Comenzar pausa por notificación
             juego_pausado = True
             tiempo_inicio_pausa = pygame.time.get_ticks()
         elif not hay_notificacion_activa and juego_pausado and tiempo_inicio_pausa is not None:
-            # Terminar pausa por notificación
             juego_pausado = False
             tiempo_total_pausado += pygame.time.get_ticks() - tiempo_inicio_pausa
             tiempo_inicio_pausa = None
         
-        # Calcular tiempo actual en segundos desde el inicio (excluyendo tiempo pausado)
         tiempo_actual_ms = pygame.time.get_ticks() - tiempo_inicio - tiempo_total_pausado
         if juego_pausado and tiempo_inicio_pausa is not None:
-            # Si está pausado actualmente, no contar el tiempo desde que comenzó la pausa
             tiempo_actual_ms -= (pygame.time.get_ticks() - tiempo_inicio_pausa)
         
         tiempo_actual_segundos = max(0, tiempo_actual_ms // 1000)
@@ -724,17 +657,9 @@ def game(new_game=False, save_file=None):
                 mostrar_pantalla_victoria(player, tiempo_actual_segundos, player_name)
                 return
         
-        # ACTUALIZAR NOTIFICADOR - Solo cuando no esté pausado
         if not juego_pausado:
             notificador.actualizar(tiempo_actual_segundos)
         
-        # Dibujo de paquetes y puntos de entrega ahora manejado por renderer.draw_package_icons()
-
-
-
-
-        
-        # Procesar eventos
         pedidos_data = {
             'pedidos': pedidos,
             'pedidos_recogidos': pedidos_recogidos,
@@ -779,42 +704,31 @@ def game(new_game=False, save_file=None):
                 tiempo_inicio_pausa = None
 
             if not paused:
-                return  # volver al menú principal
+                return
                 
-        # Obtener datos del clima (siempre disponibles para el HUD)
         condicion = sistema_clima.obtener_condicion()
         intensidad = sistema_clima.obtener_intensidad()
         efectos = sistema_clima.obtener_efectos()
 
-        # Obtener teclas presionadas (siempre disponible para ESC y otros controles)
         keys = pygame.key.get_pressed()
 
-        # --- Lógica del juego ---
-        # Actualizar clima (solo cuando no esté pausado)
         if not juego_pausado:
             sistema_clima.actualizar()
             
-        # Manejar movimiento del jugador usando el sistema integrado
         moved = event_handler.manejar_movimiento(keys, dt)
-    
 
-        # dibujar
         SCREEN.fill((0, 0, 0))
         renderer.draw(SCREEN)
         
-        # Dibujar paquetes y puntos de entrega para pedidos activos con lógica inteligente
         pedidos_activos = gestor.ver_pedidos()
         renderer.draw_package_icons(SCREEN, pedidos_activos, pedidos_recogidos, pedidos_entregados)
         
-        # Dibujar cuadrícula de debug (opcional)
-        # Si quieres ver los límites de las casillas, descomenta estas líneas:
         debug_color = (200, 200, 200, 100)
         for x in range(0, MAP_WIDTH, TILE_WIDTH):
             pygame.draw.line(SCREEN, debug_color, (x, 0), (x, MAP_HEIGHT), 1)
         for y in range(0, MAP_HEIGHT, TILE_HEIGHT):
             pygame.draw.line(SCREEN, debug_color, (0, y), (MAP_WIDTH, y), 1)
         
-        # Dibujar la posición actual del jugador
         player.draw(SCREEN)
         
         # --- HUD Actualizado ---
@@ -847,12 +761,11 @@ def game(new_game=False, save_file=None):
             "M=entregar paquete",
             "I=abrir inventario",
             "K=ordenar inventario",
-            "", # Línea vacía para separación
+            "",
             "PEDIDOS:"
         ]
 
         urgentes = gestor.ordenar_por_prioridad()
-        # Filtrar pedidos que ya fueron entregados del HUD
         urgentes_no_entregados = [p for p in urgentes if p not in pedidos_entregados]
         
         if urgentes_no_entregados:
@@ -873,10 +786,8 @@ def game(new_game=False, save_file=None):
             hud_surface = get_font(8).render(line, True, (255, 255, 255))
             SCREEN.blit(hud_surface, (MAP_WIDTH + 10, 8 + i * 20))
 
-        # Mostrar información de interacción con paquetes (posiciones adyacentes)
         interaccion_y = 550
         
-        # Verificar si puede recoger algún paquete
         puede_recoger = False
         for pedido in pedidos:
             if pedido not in pedidos_recogidos and es_adyacente((player.x, player.y), tuple(pedido.pickup)):
@@ -888,7 +799,6 @@ def game(new_game=False, save_file=None):
             texto = font.render("Presiona N para recoger paquete", True, (255, 255, 0))
             SCREEN.blit(texto, (MAP_WIDTH + 10, interaccion_y))
         
-        # Verificar si puede entregar algún paquete
         puede_entregar = False
         pedidos_en_inventario = inventario.get_orders()
         for pedido in pedidos_en_inventario:
@@ -901,17 +811,13 @@ def game(new_game=False, save_file=None):
             texto = font.render("Presiona M para entregar paquete", True, (255, 255, 0))
             SCREEN.blit(texto, (MAP_WIDTH + 10, interaccion_y + 20))
 
-        # DIBUJAR NOTIFICACIÓN (si está activa) - Esto va al final
         notificador.dibujar(SCREEN)
         
-        # Manejar pausa si se presionó ESC
         if accion == "pausa":
-            # Pausar el tiempo cuando se entra al menú de pausa
             if not juego_pausado:
                 juego_pausado = True
                 tiempo_inicio_pausa = pygame.time.get_ticks()
             
-            # Preparar datos para GameStateManager
             game_state_data = {
                 'sistema_clima': sistema_clima,
                 'notificador': notificador,
@@ -923,13 +829,12 @@ def game(new_game=False, save_file=None):
             
             paused = pause(player, stats, rep, gestor, city_map.city_name, game_state_data)
             
-            # Reanudar el tiempo cuando se sale del menú de pausa
             if juego_pausado and tiempo_inicio_pausa is not None:
                 tiempo_total_pausado += pygame.time.get_ticks() - tiempo_inicio_pausa
                 juego_pausado = False
                 tiempo_inicio_pausa = None
                 
-            if not paused:  # Si pause() retorna False, significa que queremos salir al menú principal
+            if not paused:  
                 return
 
         # Dibujar el inventario si está activo
@@ -941,14 +846,8 @@ def game(new_game=False, save_file=None):
 def game_with_bot(bot_difficulty):
     """
     Juego con Bot AI - Jugador vs Bot
-    Similar a game() pero con un oponente bot
-    
-    Args:
-        bot_difficulty: Dificultad del bot (Bot.EASY, Bot.MEDIUM, Bot.HARD)
     """
-    print(f"Iniciando Courier Quest VS Bot (Dificultad: {bot_difficulty})...")
     
-    # Obtener nombre del jugador
     player_name = get_player_name()
     if player_name is None:
         return
@@ -983,14 +882,11 @@ def game_with_bot(bot_difficulty):
     except Exception as e:
         print(f"Error cargando pedidos: {e}")
     
-    # --- Inicializar sistemas SEPARADOS para jugador y bot ---
     gestor_player = GestorPedidos()
     gestor_bot = GestorPedidos()
     notificador = NotificadorPedidos(WINDOW_WIDTH, WINDOW_HEIGHT)
     
     # Agregar pedidos al notificador para el jugador
-    # El jugador recibirá notificaciones y podrá aceptar/rechazar
-    # El bot NO recibe pedidos inicialmente, los verá cuando el notificador los libere
     notificador.agregar_pedidos_iniciales(pedidos)
     
     pygame.display.set_caption(f"{city_map.city_name} - VS Bot ({bot_difficulty.upper()})")
@@ -1032,7 +928,7 @@ def game_with_bot(bot_difficulty):
         player_name=f"Bot-{bot_difficulty.upper()}",
         difficulty=bot_difficulty,
         map_logic=map_logic,
-        inventario=None  # Se creará después
+        inventario=None
     )
     
     # --- Sistemas de deshacer y inventarios SEPARADOS ---
@@ -1042,10 +938,8 @@ def game_with_bot(bot_difficulty):
     inventario_player = InventarioPedidos(max_weight=10, screen_width=WINDOW_WIDTH, screen_height=WINDOW_HEIGHT)
     inventario_bot = InventarioPedidos(max_weight=10, screen_width=WINDOW_WIDTH, screen_height=WINDOW_HEIGHT)
     
-    # Asignar inventario al bot
     bot.inventario = inventario_bot
     
-    # Listas de pedidos SEPARADAS
     pedidos_recogidos_player = []
     pedidos_entregados_player = []
     pedidos_recogidos_bot = []
@@ -1148,7 +1042,6 @@ def game_with_bot(bot_difficulty):
                 player.score.save_scoreboard(player_name)
                 bot.score.save_scoreboard(bot.name)
                 
-                # Mostrar resultado (función simplificada por ahora)
                 mostrar_pantalla_victoria(player, tiempo_actual_segundos, player_name)
                 return
             
@@ -1164,11 +1057,9 @@ def game_with_bot(bot_difficulty):
                 mostrar_pantalla_derrota(player, tiempo_actual_segundos, "El bot ganó", player_name)
                 return
         
-        # Actualizar clima
         if not juego_pausado:
             sistema_clima.actualizar()
         
-        # --- Procesar eventos del jugador ---
         pedidos_data_player = {
             'pedidos': [p for p in pedidos if p not in pedidos_recogidos_bot and p not in pedidos_entregados_bot],
             'pedidos_recogidos': pedidos_recogidos_player,
@@ -1193,7 +1084,6 @@ def game_with_bot(bot_difficulty):
             sys.exit()
         
         if accion == "pausa":
-            # Preparar datos del estado del juego para pausar
             game_state_data = {
                 'player': player,
                 'bot': bot,
@@ -1215,7 +1105,6 @@ def game_with_bot(bot_difficulty):
                 'bot_difficulty': bot_difficulty
             }
             
-            # Llamar a la función pause con los datos del jugador
             paused = pause(player, player_stats, player_rep, gestor_player, 
                           f"{city_map.city_name} - VS Bot ({bot_difficulty.upper()})", 
                           game_state_data)
@@ -1228,19 +1117,17 @@ def game_with_bot(bot_difficulty):
             if not paused:
                 return  # Volver al menú principal
         
-        # Manejar movimiento
         keys = pygame.key.get_pressed()
         if not juego_pausado:
             event_handler.manejar_movimiento(keys, dt)
             
-            # Actualizar BOT - Solo ve pedidos que ya fueron notificados
             pedidos_disponibles_bot = [
                 p for p in pedidos
-                if p.id in notificador.pedidos_mostrados  # Solo pedidos ya notificados
-                and p not in pedidos_recogidos_player  # No recogidos por jugador
-                and p not in pedidos_entregados_player  # No entregados por jugador
-                and p not in pedidos_recogidos_bot  # No recogidos por bot
-                and p not in pedidos_entregados_bot  # No entregados por bot
+                if p.id in notificador.pedidos_mostrados  
+                and p not in pedidos_recogidos_player  
+                and p not in pedidos_entregados_player  
+                and p not in pedidos_recogidos_bot 
+                and p not in pedidos_entregados_bot  
             ]
             
             clima_factor = sistema_clima.obtener_efectos().get('velocidad_movimiento', 1.0)
@@ -1287,7 +1174,6 @@ def game_with_bot(bot_difficulty):
                         pedidos_entregados_bot.append(pedido)
                         print(f"[BOT] Paquete {pedido.id} entregado. Pago: ${ganado:.0f}")
         
-        # --- Dibujar ---
         SCREEN.fill((0, 0, 0))
         renderer.draw(SCREEN)
         
@@ -1295,7 +1181,6 @@ def game_with_bot(bot_difficulty):
         pedidos_activos_player = gestor_player.ver_pedidos()
         pedidos_activos_bot = gestor_bot.ver_pedidos()
         
-        # Combinar pedidos sin duplicados (usando id para comparar)
         pedidos_ids_vistos = set()
         todos_pedidos = []
         for pedido in pedidos_activos_player + pedidos_activos_bot:
@@ -1303,7 +1188,6 @@ def game_with_bot(bot_difficulty):
                 todos_pedidos.append(pedido)
                 pedidos_ids_vistos.add(pedido.id)
         
-        # Combinar recogidos sin duplicados
         recogidos_ids_vistos = set()
         todos_recogidos = []
         for pedido in pedidos_recogidos_player + pedidos_recogidos_bot:
@@ -1311,7 +1195,6 @@ def game_with_bot(bot_difficulty):
                 todos_recogidos.append(pedido)
                 recogidos_ids_vistos.add(pedido.id)
         
-        # Combinar entregados sin duplicados
         entregados_ids_vistos = set()
         todos_entregados = []
         for pedido in pedidos_entregados_player + pedidos_entregados_bot:
@@ -1321,14 +1204,12 @@ def game_with_bot(bot_difficulty):
         
         renderer.draw_package_icons(SCREEN, todos_pedidos, todos_recogidos, todos_entregados)
         
-        # Dibujar cuadrícula debug
         debug_color = (200, 200, 200, 100)
         for x in range(0, MAP_WIDTH, TILE_WIDTH):
             pygame.draw.line(SCREEN, debug_color, (x, 0), (x, MAP_HEIGHT), 1)
         for y in range(0, MAP_HEIGHT, TILE_HEIGHT):
             pygame.draw.line(SCREEN, debug_color, (0, y), (MAP_WIDTH, y), 1)
         
-        # Dibujar jugadores
         player.draw(SCREEN)
         bot.draw(SCREEN)
         
@@ -1544,13 +1425,6 @@ def main_menu():
         pygame.display.update()
         
 def pause(player, stats, rep, gestor, original_caption, game_state_data=None):
-    """
-    Función de pausa mejorada con soporte para GameStateManager
-    
-    Args:
-        game_state_data: Dict con todos los objetos necesarios para el guardado completo
-                        {'sistema_clima': ..., 'notificador': ..., 'tiempo_actual': ..., etc}
-    """
     pygame.display.set_caption("Courier Quest - Pausa")
 
     while True:
@@ -1558,11 +1432,9 @@ def pause(player, stats, rep, gestor, original_caption, game_state_data=None):
 
         MENU_MOUSE_POS = pygame.mouse.get_pos()
 
-        # Calcular el centro de la pantalla actual
         center_x = WINDOW_WIDTH // 2
         center_y = WINDOW_HEIGHT // 2
 
-        # Ajustar el tamaño de la fuente según el ancho de la pantalla (reducido)
         title_font_size = min(45, WINDOW_WIDTH // 20)
         button_font_size = min(28, WINDOW_WIDTH // 32)  # Reducido para 4 botones
 
@@ -1594,7 +1466,6 @@ def pause(player, stats, rep, gestor, original_caption, game_state_data=None):
                     return True  # Retorna True para continuar el juego
                 if SAVE_BUTTON.checkForInput(MENU_MOUSE_POS):
                     try:
-                        # Usar GameStateManager si los datos están disponibles
                         if game_state_data:
                             game_state_manager = GameStateManager()
                             game_state = game_state_manager.create_game_state(
@@ -1611,10 +1482,9 @@ def pause(player, stats, rep, gestor, original_caption, game_state_data=None):
                             )
                             save_id = game_state_manager.save_game_state(game_state)
                         else:
-                            # Fallback al método anterior (limitado)
                             save_data = player.exportar_estado(
                                 player_name=player.name, 
-                                day=1,  # aquí puedes usar el día actual
+                                day=1,
                                 current_weather="clear"
                             )
                             save_id = Save.save_score_only_global()
@@ -1623,7 +1493,6 @@ def pause(player, stats, rep, gestor, original_caption, game_state_data=None):
 
                     except Exception as e:
                         print(f"Error al guardar: {e}")
-                    # Continuar en pausa después de guardar
                 if MAIN_MENU_BUTTON.checkForInput(MENU_MOUSE_POS):
                     return False  # Retorna False para ir al menú principal
                 if QUIT_BUTTON.checkForInput(MENU_MOUSE_POS):
